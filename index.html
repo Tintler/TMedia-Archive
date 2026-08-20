@@ -552,6 +552,28 @@ tbody tr:last-child td{border-bottom:none}
 .lk-row b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lk-row small{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
 
+/* ---- kayıt panelindeki büyük puan ---- */
+.rating-wrap{margin-top:18px}
+.rating-main{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rating-num{
+  font-family:var(--display);font-weight:800;font-size:clamp(44px,7vw,64px);
+  line-height:.9;letter-spacing:-.04em;color:var(--brass);
+}
+.rating-main.none .rating-num{color:var(--muted-2)}
+.rating-max{font-family:var(--mono);font-size:16px;color:var(--muted-2)}
+.rating-main.none .rating-max{display:none}
+.rating-lbl{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);margin-left:6px;
+}
+.rating-extra{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.rp{
+  display:flex;flex-direction:column;gap:2px;padding:7px 12px;border-radius:var(--r-sm);
+  background:var(--panel);border:1px solid var(--edge-soft);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);
+}
+.rp b{font-family:var(--display);font-size:17px;font-weight:700;color:var(--paper);letter-spacing:-.02em}
+
 /* ---- son ayarlamalar ---- */
 .ro-value{
   padding:7px 0;font-size:14px;color:var(--paper);
@@ -989,6 +1011,7 @@ const I18N = {
     'lk.go':'Search','lk.none':'Nothing found','lk.searching':'Searching…',
     'lk.hint':'Optional. Fill the fields from the source, then edit anything you like — or skip this and type everything by hand.',
     'lk.filled':'Fields filled from the source',
+    'd.myRating':'Your rating','d.noRating':'Not rated yet','d.votes':'votes',
     'd.deleted':'Deleted','d.confirm':'Delete this record for good?','d.fetchCover':'Find cover',
     'd.noCover':'No cover found','d.open':'Open source page',
     'd.needApi':'Connect the Google Sheet first — this lookup runs on the server.',
@@ -1049,6 +1072,7 @@ const I18N = {
     'lk.go':'Ara','lk.none':'Sonuç yok','lk.searching':'Aranıyor…',
     'lk.hint':'İsteğe bağlı. Alanları kaynaktan doldurur, sonra dilediğini değiştirirsin — ya da hiç kullanmadan elle yazarsın.',
     'lk.filled':'Alanlar kaynaktan dolduruldu',
+    'd.myRating':'Verdiğin puan','d.noRating':'Henüz puanlanmadı','d.votes':'oy',
     'd.deleted':'Silindi','d.confirm':'Bu kayıt tamamen silinsin mi?','d.fetchCover':'Kapak bul',
     'd.noCover':'Kapak bulunamadı','d.open':'Kaynak sayfayı aç',
     'd.needApi':'Önce Google Sheet’i bağla — bu arama sunucu tarafında çalışıyor.',
@@ -1873,6 +1897,34 @@ function buildFilterBar(secId){
   });
 }
 
+/* Puanın yanında gösterilecek ikincil değerler. */
+const EXTRA_RATINGS = {
+  games:  [['Rating (Gameplay)','Gameplay'],['Rating (Sound)','Sound'],['Rating (Story)','Story'],
+           ['Rating (Visual)','Visual'],['Rating (Accessibility)','Accessibility']],
+  screen: [['IMDb Rating','IMDb']],
+  books:  []          // 1000Kitap'ın ortalaması değil, senin puanın gösterilir
+};
+
+/* Kayıt panelinde kapağın yanındaki büyük puan. */
+function ratingBlock(secId, r){
+  const s = SECTIONS[secId];
+  const v = numOf(r[s.score]);
+  const extras = (EXTRA_RATINGS[secId]||[])
+    .filter(([k])=> numOf(r[k])>0)
+    .map(([k,label])=> `<span class="rp"><b>${esc(numOf(r[k]))}</b>${esc(label)}</span>`);
+  if(secId==='screen' && numOf(r['Num Votes'])>0)
+    extras.push(`<span class="rp"><b>${numOf(r['Num Votes']).toLocaleString(S.lang)}</b>${esc(t('d.votes'))}</span>`);
+
+  return `<div class="rating-wrap">
+    <div class="rating-main ${v>0?'':'none'}">
+      <span class="rating-num">${v>0?esc(v):'—'}</span>
+      <span class="rating-max">/ ${s.scoreMax}</span>
+      <span class="rating-lbl">${esc(v>0 ? t('d.myRating') : t('d.noRating'))}</span>
+    </div>
+    ${extras.length?`<div class="rating-extra">${extras.join('')}</div>`:''}
+  </div>`;
+}
+
 /* ---------- 12. RECORD DETAIL / EDITOR -------------------------------- */
 let DT = {sec:null, rec:null, isNew:false};
 
@@ -2001,6 +2053,7 @@ function openDetail(secId, rec, isNew){
       <div class="detail-info">
         <h3>${esc(r[s.title]||'—')}</h3>
         <div class="mono muted" style="font-size:12px">${esc([cardSub(secId, r), r[s.year]&&yearOf(r[s.year]), s.status&&r[s.status]].filter(Boolean).join(' · '))}</div>
+        ${ratingBlock(secId, r)}
         ${progHTML}
         ${nz(r.URL)?`<a class="btn btn-sm" style="margin-top:12px" href="${esc(r.URL)}" target="_blank" rel="noopener">${esc(t('d.open'))} ↗</a>`:''}
       </div>
