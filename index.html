@@ -442,8 +442,16 @@ tbody tr:last-child td{border-bottom:none}
 .splash-bar i{display:block;height:100%;width:8%;background:var(--brass);transition:width .5s ease}
 
 /* ============ HOME: FEED + PROFILES ============ */
-.home-cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:30px;margin-top:38px;align-items:start}
-@media(max-width:900px){.home-cols{grid-template-columns:1fr;gap:20px}}
+.home-cols{display:grid;grid-template-columns:400px minmax(0,1fr);gap:34px;margin-top:38px;align-items:start}
+.home-side{display:flex;flex-direction:column;gap:30px}
+@media(max-width:1100px){.home-cols{grid-template-columns:340px minmax(0,1fr);gap:24px}}
+@media(max-width:900px){
+  .home-cols{grid-template-columns:1fr;gap:22px}
+  .home-side{display:contents}
+  .playing{order:1}
+  .home-main{order:2}
+  .profiles-wrap{order:3}
+}
 .feed{border:1px solid var(--edge-soft);border-radius:var(--r);overflow:hidden;background:var(--shelf)}
 .feed-row{
   display:grid;grid-template-columns:30px 78px minmax(0,1fr) auto auto 92px;
@@ -495,10 +503,10 @@ tbody tr:last-child td{border-bottom:none}
 .top5-item img{width:100%;height:100%;object-fit:cover}
 
 /* ---- şu anda oynananlar ---- */
-.playing{margin-top:38px}
+.playing{margin-top:0}
 .playing-h{
   font-family:var(--display);font-weight:800;font-variation-settings:"wdth" 84;
-  font-size:clamp(24px,3.4vw,38px);letter-spacing:-.02em;text-transform:uppercase;
+  font-size:clamp(23px,2.4vw,32px);letter-spacing:-.02em;text-transform:uppercase;
   margin:0 0 6px;display:flex;gap:.35em;flex-wrap:wrap;
 }
 .playing-h em{font-style:normal;color:var(--brass)}
@@ -506,10 +514,7 @@ tbody tr:last-child td{border-bottom:none}
   content:"";display:block;width:64px;height:3px;border-radius:2px;
   background:var(--brass);margin-bottom:20px;
 }
-.playing-row{
-  display:grid;gap:18px;
-  grid-template-columns:repeat(auto-fill,minmax(178px,1fr));
-}
+.playing-row{display:grid;gap:18px;grid-template-columns:repeat(2,1fr)}
 .playing-card{
   text-align:left;cursor:pointer;transition:transform .18s cubic-bezier(.2,.8,.2,1);
 }
@@ -522,9 +527,7 @@ tbody tr:last-child td{border-bottom:none}
 .playing-card:hover .cover{border-color:var(--brass)}
 .playing-card img{width:100%;height:100%;object-fit:cover;display:block}
 .playing-card .card-title{font-size:14.5px;margin-top:10px}
-@media(max-width:520px){
-  .playing-row{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
-}
+@media(max-width:520px){.playing-row{gap:14px}}
 
 /* ---- son ayarlamalar ---- */
 .ro-value{
@@ -598,20 +601,22 @@ tbody tr:last-child td{border-bottom:none}
       </div>
       <div class="shelf" id="shelf"></div>
       <div class="home-strip" id="homeStrip"></div>
-      <section class="playing hidden" id="playingWrap">
-        <h2 class="playing-h"><span data-i18n="home.playing1">Currently</span>
-          <em data-i18n="home.playing2">playing</em></h2>
-        <div class="playing-row" id="playingRow"></div>
-      </section>
       <div class="home-cols">
-        <div>
+        <div class="home-side">
+          <section class="playing hidden" id="playingWrap">
+            <h2 class="playing-h"><span data-i18n="home.playing1">Currently</span>
+              <em data-i18n="home.playing2">playing</em></h2>
+            <div class="playing-row" id="playingRow"></div>
+          </section>
+          <section class="profiles-wrap">
+            <div class="sub-h" data-i18n="home.profiles">Profiles</div>
+            <div class="profiles" id="profiles"></div>
+          </section>
+        </div>
+        <div class="home-main">
           <div class="sub-h" data-i18n="home.feed">Activity</div>
           <div class="feed" id="feed"></div>
         </div>
-        <aside>
-          <div class="sub-h" data-i18n="home.profiles">Profiles</div>
-          <div class="profiles" id="profiles"></div>
-        </aside>
       </div>
     </div>
   </section>
