@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Backlog — Personal Media Archive</title>
 <meta name="description" content="A personal archive of games, anime, manga, film, television and books.">
+<!-- Bu dosya tek başına bütün siteyi taşıyor ve sık değişiyor. Tarayıcının
+     eski bir kopyayı saklaması, eski bir Apps Script adresine bağlanmak
+     demek olabiliyor; o yüzden her açılışta sunucuya sorulsun. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -721,7 +727,7 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxDPgVdQL03OcMLWicRYTPH9fy_IjAQHXVV1ya3Ar73OFrIF8iFixJckWOcKRSm8ZV0/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxwQqNVNkUP7zOxi9hqY7_vxYo50dLjUW12glqTvGx2SwMnknh6WUavUd36qgu9n5CnFg/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
