@@ -574,6 +574,14 @@ tbody tr:last-child td{border-bottom:none}
 }
 .rp b{font-family:var(--display);font-size:17px;font-weight:700;color:var(--paper);letter-spacing:-.02em}
 
+/* ---- sıralı liste (yazarlar) ---- */
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.rank li{display:grid;grid-template-columns:minmax(0,1fr) 90px 34px;align-items:center;gap:12px}
+.rank-name{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-bar{height:6px;background:var(--edge);border-radius:3px;overflow:hidden}
+.rank-bar i{display:block;height:100%;background:var(--indigo)}
+.rank-n{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--paper);text-align:right}
+
 /* ---- en çok sahip olunan seri ---- */
 .fr-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .fr-head b{
@@ -813,14 +821,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwEZDPSK1LZzlHedFpPn9dAeSs0SffM1z96PFRRXSMgn7HjeQ-u2niD2rQOTcPMiyo5Ig/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbzMoQ041anEJrTTporS7toi0NAzNAgMVF_9Ahn-_8pPWsdPhZ2-f49EWnVhnV7bGRHN/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-20-v1';
+const NEEDS_SERVER = '2026-08-20-v2';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-20-v1';
+const APP_VERSION = '2026-08-20-v2';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -945,7 +953,8 @@ const SECTIONS = {
     key:['Book Id'],
     title:'Title', sub:'Author', score:'My Rating', scoreMax:10,
     status:'Shelf', year:'First Published', added:'Date Read',
-    progress:{cur:'Page', total:'Pages'},
+    /* Sayfa takibi elle giriliyor ve çoğu kayıtta boş; "0 / 408 · %0"
+       çubuğu bilgi vermiyordu, o yüzden kitaplarda ilerleme yok. */
     imported:['Book Id','Title','Author','Translator','Publisher','ISBN','Pages','First Published','Genres','Site Rating','My Rating','Shelf','Date Read','Reading Time','URL'],
     local:['Cover','Page','Favorite','Notes'],
     /* The export carries cover art; it fills a blank cell but never
@@ -954,7 +963,7 @@ const SECTIONS = {
     defaultCols:['Cover','Title','Author','Pages','Page','My Rating','Shelf','Date Read'],
     startFilters:{'Shelf':'Completed'}, startSort:{by:'My Rating', dir:-1},
     top:['Shelf','Page'],
-    charts:['scores','status'],
+    charts:['scores','status','genres'],
     filters:[
       {f:'Shelf',t:'select'},{f:'Author',t:'select'},{f:'Genres',t:'multi'},
       {f:'Publisher',t:'select'},{f:'My Rating',t:'range'},{f:'Pages',t:'range'}
@@ -1059,6 +1068,7 @@ const I18N = {
     'c.byTheme':'Themes by completion','c.franchise':'Most owned franchise',
     'c.franchiseNone':'Run “Game genres, themes and series” from Tools to fill this in.',
     'c.titles':'titles',
+    'c.authors':'Most read authors','c.authorsNote':'Counting books you finished.',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
     'd.notes':'Notes','d.fav':'Favourite','d.status':'Status','d.edit':'Edit','d.saved':'Saved',
@@ -1139,6 +1149,7 @@ const I18N = {
     'c.byTheme':'Temaya göre tamamlanma','c.franchise':'En çok sahip olunan seri',
     'c.franchiseNone':'Araçlar’dan “Oyun türleri, temaları ve serileri”ni çalıştırınca dolar.',
     'c.titles':'oyun',
+    'c.authors':'En çok okunan yazarlar','c.authorsNote':'Bitirdiğin kitaplar sayılıyor.',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
     'd.notes':'Notlar','d.fav':'Favori','d.status':'Durum','d.edit':'Düzenle','d.saved':'Kaydedildi',
@@ -2744,6 +2755,25 @@ function stackedByStatus(id, secId, field, split, kacTane){
   };
 }
 
+/* En çok okuduğun yazarlar: bitirdiğin kitap sayısına göre ilk beş. */
+function authorPanel(){
+  const bitmis = S.data.books.filter(r=> /complet/i.test(String(r.Shelf||'')));
+  const kaynak = bitmis.length ? bitmis : S.data.books;
+  const top = topN(countBy(kaynak, r=> String(r.Author||'').trim()), 5);
+  if(!top.length) return '';
+
+  const enCok = top[0][1] || 1;
+  return `<div class="chart-card"><h4>${esc(t('c.authors'))}</h4>
+    <ol class="rank">${top.map(([ad,n])=>`
+      <li>
+        <span class="rank-name">${esc(ad)}</span>
+        <span class="rank-bar"><i style="width:${Math.round(n/enCok*100)}%"></i></span>
+        <span class="rank-n">${n}</span>
+      </li>`).join('')}</ol>
+    <p class="mono muted" style="font-size:10.5px;margin:12px 0 0">${esc(t('c.authorsNote'))}</p>
+  </div>`;
+}
+
 /* En çok oyuna sahip olduğun seri, altında o seriden en yüksek puanlılar. */
 function franchisePanel(){
   const s = SECTIONS.games;
@@ -2833,7 +2863,8 @@ function renderStats(){
       </button>`;
     }).join('') : `<p class="muted">${esc(t('nores'))}</p>`}</div></div>`;
 
-  const franchiseHTML = (scope==='games') ? franchisePanel() : '';
+  const franchiseHTML = (scope==='games') ? franchisePanel()
+                      : (scope==='books') ? authorPanel() : '';
 
   $('#charts').innerHTML = topHTML + franchiseHTML + cards.map(c=>
     `<div class="chart-card ${c.span?'span2':''}"><h4>${esc(c.title)}</h4>
@@ -2883,7 +2914,8 @@ function renderStats(){
     const paket = stackedByStatus(defs[anahtar].id, scope, alan, bol, 14);
     if(paket) mk(paket.id, paket.cfg);
   });
-  if(want.includes('genres'))   hbar('c6', topN(countBy(S.data.screen, r=> String(r.Genres||'').split(/,\s*/)), 12), '#E4795B');
+  if(want.includes('genres'))
+    hbar('c6', topN(countBy(items, x=> String(x.r.Genres||'').split(/,\s*/).map(v=>v.trim())), 12), s.color);
   if(want.includes('animeType')){
     const at = topN(countBy(S.data.anime, r=>r.Type), 8);
     mk('c7', {type:'doughnut', data:{labels:at.map(a=>a[0]), datasets:[{data:at.map(a=>a[1]), backgroundColor:PALETTE, borderColor:'#151920', borderWidth:2}]},
@@ -2933,12 +2965,28 @@ $('#btnAdd').onclick = ()=>{
 };
 $('#statScope').onchange = renderStats;
 
+let splashPct = 0, splashTimer = null;
 function splash(msg, pct){
   const m = $('#splashMsg'), b = $('#splashBar');
   if(m && msg) m.textContent = msg;
-  if(b && pct!=null) b.style.width = pct+'%';
+  if(pct!=null) splashPct = Math.max(splashPct, pct);
+  if(b) b.style.width = splashPct+'%';
+
+  /* Bekleme uzun sürebiliyor; çubuk hep biraz ilerlesin ki ekran
+     donmuş gibi durmasın. %92'de durur, iş bitince 100'e atlar. */
+  if(!splashTimer){
+    splashTimer = setInterval(()=>{
+      const el = $('#splashBar');
+      if(!el) return;
+      if(splashPct < 92) splashPct += Math.max(0.25, (92-splashPct)*0.035);
+      el.style.width = splashPct.toFixed(1)+'%';
+    }, 240);
+  }
 }
 function splashDone(){
+  if(splashTimer){ clearInterval(splashTimer); splashTimer = null; }
+  splashPct = 100;
+  const bar = $('#splashBar'); if(bar) bar.style.width = '100%';
   const el = $('#splash');
   if(!el) return;
   el.classList.add('gone');
