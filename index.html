@@ -574,6 +574,25 @@ tbody tr:last-child td{border-bottom:none}
 }
 .rp b{font-family:var(--display);font-size:17px;font-weight:700;color:var(--paper);letter-spacing:-.02em}
 
+/* ---- en çok sahip olunan seri ---- */
+.fr-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.fr-head b{
+  font-family:var(--display);font-weight:800;font-size:clamp(22px,3vw,30px);
+  letter-spacing:-.03em;color:var(--brass);
+}
+.fr-head span{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2)}
+.fr-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+@media(max-width:760px){.fr-row{grid-template-columns:repeat(3,1fr)}}
+.chart-box.xtall{height:460px}
+
+/* ---- sürüm damgası ---- */
+.build-stamp{
+  position:fixed;right:10px;bottom:8px;z-index:150;pointer-events:none;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+  color:var(--muted-2);opacity:.55;
+}
+.build-stamp.warn{color:var(--red);opacity:.9}
+
 /* ---- bakım paneli ---- */
 .job-list{display:flex;flex-direction:column;gap:6px}
 .job-row{
@@ -784,6 +803,7 @@ tbody tr:last-child td{border-bottom:none}
   <div class="modal-foot" id="impFoot"></div>
 </div></div>
 
+<div class="build-stamp" id="buildStamp"></div>
 <div class="toast-wrap" id="toasts"></div>
 <script>
 /* =====================================================================
@@ -793,11 +813,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbznyTIuBmbzeHFV-59GRFalXRFVk0oK91j05zuyD0WLPuGpBAsDWKPhb4Al6WOPCbS29A/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwEZDPSK1LZzlHedFpPn9dAeSs0SffM1z96PFRRXSMgn7HjeQ-u2niD2rQOTcPMiyo5Ig/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-20-freeze';
+const NEEDS_SERVER = '2026-08-20-v1';
+/* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
+   gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
+const APP_VERSION = '2026-08-20-v1';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -842,6 +865,8 @@ const SECTIONS = {
     /* Genres, Themes ve Franchises IGDB'den toplu olarak doldurulur.
        "local" oldukları için içe aktarma bunlara hiç dokunmaz. */
     local:[...LOCAL_COMMON, 'Genres', 'Themes', 'Franchises'],
+    /* Import dosyasından gelmeyen ama panelde görünmesi gereken alanlar. */
+    showLocal:['Genres','Themes','Franchises'],
     defaultCols:['Cover','Game name','Platform','Status','Completion','Playtime','Rating (Score)','Genres'],
     startFilters:{'Status':'Played'}, startSort:{by:'Rating (Score)', dir:-1},
     /* Bitmiş bir oyunun damgası dışa aktarımlarda boşuna tazelenmesin;
@@ -854,7 +879,7 @@ const SECTIONS = {
       {f:'Genres',t:'multi'},{f:'Themes',t:'multi'},{f:'Franchises',t:'select'},
       {f:'Rating (Score)',t:'range'},{f:'Game release date',t:'yearRange'}
     ],
-    charts:['scores','status','year','platform'],
+    charts:['scores','status','byPlatform','byGenre','byTheme','year'],
     sorts:['Game name','Rating (Score)','Playtime','Game release date','Date added','Last updated','Platform','Status','Franchises']
   },
 
@@ -1030,6 +1055,10 @@ const I18N = {
     'c.byType':'Library composition','c.scores':'Score distribution','c.status':'Status breakdown',
     'c.year':'By release year','c.added':'Added per year','c.platform':'Platform','c.genres':'Top genres',
     'c.animeType':'Anime formats','c.shelf':'Bookshelves','c.top':'Highest rated',
+    'c.byPlatform':'Platforms by completion','c.byGenre':'Genres by completion',
+    'c.byTheme':'Themes by completion','c.franchise':'Most owned franchise',
+    'c.franchiseNone':'Run “Game genres, themes and series” from Tools to fill this in.',
+    'c.titles':'titles',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
     'd.notes':'Notes','d.fav':'Favourite','d.status':'Status','d.edit':'Edit','d.saved':'Saved',
@@ -1106,6 +1135,10 @@ const I18N = {
     'c.byType':'Kütüphane dağılımı','c.scores':'Puan dağılımı','c.status':'Durum dağılımı',
     'c.year':'Çıkış yılına göre','c.added':'Yıllara göre ekleme','c.platform':'Platform','c.genres':'En çok tür',
     'c.animeType':'Anime formatları','c.shelf':'Raflar','c.top':'En yüksek puanlılar',
+    'c.byPlatform':'Platforma göre tamamlanma','c.byGenre':'Türe göre tamamlanma',
+    'c.byTheme':'Temaya göre tamamlanma','c.franchise':'En çok sahip olunan seri',
+    'c.franchiseNone':'Araçlar’dan “Oyun türleri, temaları ve serileri”ni çalıştırınca dolar.',
+    'c.titles':'oyun',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
     'd.notes':'Notlar','d.fav':'Favori','d.status':'Durum','d.edit':'Düzenle','d.saved':'Kaydedildi',
@@ -1547,6 +1580,7 @@ function applyLang(){
   $('#langTr').classList.toggle('on', S.lang==='tr');
   buildNav();
   paintAuth();
+  paintBuildStamp();
   if(S.page==='home') renderHome();
   else if(S.page==='stats') renderStats();
   else renderSection();
@@ -1881,7 +1915,9 @@ function renderSection(){
 }
 
 function listHTML(secId, rows){
-  const s = SECTIONS[secId], cols = S.cols[secId].filter(c=> s.columns.includes(c));
+  const s = SECTIONS[secId];
+  /* Kapak sütunu ne sırada seçilirse seçilsin hep en solda dursun. */
+  const cols = orderCols(secId, S.cols[secId]);
   const head = cols.map(c=>{
     const on = S.sort[secId].by===c;
     return `<th data-col="${esc(c)}">${esc(c==='Cover'?'':colLabel(secId,c))}${on?`<span class="sort-i">${S.sort[secId].dir===1?'▲':'▼'}</span>`:''}</th>`;
@@ -1903,6 +1939,13 @@ function listHTML(secId, rows){
 }
 
 /* ---------- 11. FILTER BAR -------------------------------------------- */
+/* Seçili sütunları ekrana ve Excel'e çıkarken kullanılacak sıraya sokar. */
+function orderCols(secId, chosen){
+  const s = SECTIONS[secId];
+  const list = (chosen||[]).filter(c=> s.columns.includes(c));
+  return list.includes('Cover') ? ['Cover', ...list.filter(c=>c!=='Cover')] : list;
+}
+
 function distinct(secId, field, split){
   const m = new Map();
   S.data[secId].forEach(r=>{
@@ -2067,12 +2110,13 @@ function openDetail(secId, rec, isNew){
   }).join('');
 
   const topKeys = tops.map(f=>f.k);
+  const detayAlanlari = s.imported.concat(s.showLocal||[]);
   const importedHTML = S.auth
-    ? `<div class="form-grid">${s.imported.filter(c=> !topKeys.includes(c)).map(c=>
+    ? `<div class="form-grid">${detayAlanlari.filter(c=> !topKeys.includes(c)).map(c=>
         `<div class="field ${/comment|review|description|notes/i.test(c)?'wide':''}"><label>${esc(c)}${isMinuteField(secId,c)?' — min':''}</label>
          <input type="text" data-k="${esc(c)}" value="${esc(r[c]||'')}">
          ${isMinuteField(secId,c)?`<span class="mono muted" style="font-size:10.5px">= ${esc(fmtHours(r[c]))}</span>`:''}</div>`).join('')}</div>`
-    : `<dl class="kv">${s.imported.filter(c=> !topKeys.includes(c) && nz(r[c])).map(c=>
+    : `<dl class="kv">${detayAlanlari.filter(c=> !topKeys.includes(c) && nz(r[c])).map(c=>
         `<dt>${esc(colLabel(secId,c))}</dt><dd>${esc(fmtCell(secId,c,r[c]))}</dd>`).join('')}</dl>`;
 
   /* Elle kayıt eklerken kaynaktan doldurma paneli. IGDB ya da OMDb
@@ -2566,6 +2610,15 @@ async function runImport(){
 }
 
 /* ---------- 16. AUTH --------------------------------------------------- */
+function paintBuildStamp(){
+  const el = $('#buildStamp');
+  if(!el) return;
+  const srv = S.serverVersion || (API.connected ? '?' : '—');
+  const uyum = !API.connected || S.serverVersion === NEEDS_SERVER;
+  el.innerHTML = `app ${esc(APP_VERSION)} · server ${esc(srv)}`;
+  el.classList.toggle('warn', !uyum);
+}
+
 function paintAuth(){
   $('#authDot').className = 'dot'+(S.auth?' live':'');
   const lbl = $('#authBtn').querySelector('span[data-i18n]');
@@ -2638,6 +2691,90 @@ const topN = (m,n)=> Array.from(m.entries()).sort((a,b)=>b[1]-a[1]).slice(0,n);
 const sumOf = (list, field)=> list.reduce((a,r)=> a+(numOf(r[field])||0), 0);
 const normScore = (r,s)=>{ const v=numOf(r[s.score]); return (v==null||v<=0)?null:(v/s.scoreMax)*10; };
 
+/* Bir alanın en çok geçen değerlerini, tamamlanma durumuna göre
+   yığılmış yatay çubuk olarak çizer. */
+function stackedByStatus(id, secId, field, split, kacTane){
+  const s = SECTIONS[secId];
+  const durumAlani = s.statStatus || s.status;
+  const rows = S.data[secId];
+  const cats = topN(countBy(rows, r=> split
+    ? String(r[field]||'').split(/,\s*/).map(x=>x.trim())
+    : String(r[field]||'').trim()), kacTane).map(a=>a[0]);
+  if(!cats.length) return null;
+
+  const SIRA = ['No Status','Not Started','Unfinished','Beaten','Completed','Continuous','Dropped'];
+  const durumlar = Array.from(new Set(rows.map(r=> String(r[durumAlani]||'').trim()).filter(Boolean)))
+    .sort((a,b)=>{
+      const ia = SIRA.indexOf(a), ib = SIRA.indexOf(b);
+      return (ia<0?99:ia) - (ib<0?99:ib);
+    });
+
+  /* Kategori × durum sayacını tek geçişte doldur. */
+  const sayac = {};
+  cats.forEach(c=> sayac[c] = {});
+  rows.forEach(r=>{
+    const st = String(r[durumAlani]||'').trim();
+    if(!st) return;
+    const vs = split ? String(r[field]||'').split(/,\s*/).map(x=>x.trim()) : [String(r[field]||'').trim()];
+    vs.forEach(v=>{ if(sayac[v]) sayac[v][st] = (sayac[v][st]||0)+1; });
+  });
+
+  return {
+    id,
+    cfg:{
+      type:'bar',
+      data:{
+        labels: cats.map(c=> String(c).slice(0,26)),
+        datasets: durumlar.map((st,i)=>({
+          label: st, stack:'a', borderRadius:2,
+          backgroundColor: statusColor(st, i, secId),
+          data: cats.map(c=> sayac[c][st]||0)
+        }))
+      },
+      options:{
+        indexAxis:'y',
+        plugins:{legend:{position:'top', labels:{boxWidth:9, padding:10}}},
+        scales:{
+          x:{stacked:true, grid:{color:'#222836'}, beginAtZero:true},
+          y:{stacked:true, grid:{display:false}}
+        },
+        maintainAspectRatio:false
+      }
+    }
+  };
+}
+
+/* En çok oyuna sahip olduğun seri, altında o seriden en yüksek puanlılar. */
+function franchisePanel(){
+  const s = SECTIONS.games;
+  const say = topN(countBy(S.data.games, r=>
+    String(r.Franchises||'').split(/,\s*/).map(x=>x.trim())), 1);
+
+  if(!say.length){
+    return `<div class="chart-card span2"><h4>${esc(t('c.franchise'))}</h4>
+      <p class="muted" style="margin:0">${esc(t('c.franchiseNone'))}</p></div>`;
+  }
+  const [ad, adet] = say[0];
+  const uyeler = S.data.games
+    .filter(r=> String(r.Franchises||'').split(/,\s*/).map(x=>x.trim()).includes(ad))
+    .sort((a,b)=> compareCells(a['Rating (Score)'], b['Rating (Score)'], -1))
+    .slice(0,6);
+
+  return `<div class="chart-card span2"><h4>${esc(t('c.franchise'))}</h4>
+    <div class="fr-head"><b>${esc(ad)}</b><span>${adet} ${esc(t('c.titles'))}</span></div>
+    <div class="fr-row">${uyeler.map(r=>{
+      const img = nz(r.Cover)
+        ? `<img src="${esc(r.Cover)}" alt="" loading="lazy">`
+        : `<div class="cover-fallback">${esc(initials(r['Game name']))}</div>`;
+      const p = numOf(r['Rating (Score)']);
+      return `<button class="top5-item" data-sec="games" data-id="${esc(r._id)}">
+        <div class="cover" style="background:${tintFor(r['Game name'])}">${img}
+          ${p>0?`<span class="cover-score">${esc(p)}</span>`:''}</div>
+        <div class="card-title">${esc(r['Game name'])}</div>
+      </button>`;
+    }).join('')}</div></div>`;
+}
+
 function renderStats(){
   chartDefaults();
   const keep = SEC_IDS.includes($('#statScope').value) ? $('#statScope').value : SEC_IDS[0];
@@ -2668,12 +2805,15 @@ function renderStats(){
   /* Which charts this section gets is declared in its schema. */
   const want = s.charts || ['scores'];
   const defs = {
-    scores:   {id:'c2', title:t('c.scores'), span:true},
-    status:   {id:'c3', title:t('c.status')},
-    year:     {id:'c4', title:t('c.year'), span:true},
-    platform: {id:'c5', title:t('c.platform')},
-    genres:   {id:'c6', title:t('c.genres')},
-    animeType:{id:'c7', title:t('c.animeType')}
+    scores:    {id:'c2', title:t('c.scores'), span:true},
+    status:    {id:'c3', title:t('c.status')},
+    year:      {id:'c4', title:t('c.year'), span:true},
+    platform:  {id:'c5', title:t('c.platform')},
+    genres:    {id:'c6', title:t('c.genres')},
+    animeType: {id:'c7', title:t('c.animeType')},
+    byPlatform:{id:'c8', title:t('c.byPlatform'), span:true, tall:true},
+    byGenre:   {id:'c9', title:t('c.byGenre'), span:true, tall:true},
+    byTheme:   {id:'c10',title:t('c.byTheme'), span:true, tall:true}
   };
   const cards = want.filter(k=>defs[k]).map(k=>defs[k]);
 
@@ -2693,9 +2833,11 @@ function renderStats(){
       </button>`;
     }).join('') : `<p class="muted">${esc(t('nores'))}</p>`}</div></div>`;
 
-  $('#charts').innerHTML = topHTML + cards.map(c=>
+  const franchiseHTML = (scope==='games') ? franchisePanel() : '';
+
+  $('#charts').innerHTML = topHTML + franchiseHTML + cards.map(c=>
     `<div class="chart-card ${c.span?'span2':''}"><h4>${esc(c.title)}</h4>
-      <div class="chart-box ${c.span?'tall':''}"><canvas id="${c.id}"></canvas></div></div>`).join('');
+      <div class="chart-box ${c.tall?'xtall':(c.span?'tall':'')}"><canvas id="${c.id}"></canvas></div></div>`).join('');
 
   $$('#charts .top5-item').forEach(b=> b.onclick = ()=>{
     const rec = S.data[b.dataset.sec].find(x=>x._id===b.dataset.id);
@@ -2736,6 +2878,11 @@ function renderStats(){
     }, options:{plugins:{legend:{display:false}}, scales:{x:gridX,y:gridY}, maintainAspectRatio:false}});
   }
   if(want.includes('platform')) hbar('c5', topN(countBy(S.data.games, r=>r.Platform), 12), '#E3B23C');
+  [['byPlatform','Platform',false],['byGenre','Genres',true],['byTheme','Themes',true]].forEach(([anahtar,alan,bol])=>{
+    if(!want.includes(anahtar)) return;
+    const paket = stackedByStatus(defs[anahtar].id, scope, alan, bol, 14);
+    if(paket) mk(paket.id, paket.cfg);
+  });
   if(want.includes('genres'))   hbar('c6', topN(countBy(S.data.screen, r=> String(r.Genres||'').split(/,\s*/)), 12), '#E4795B');
   if(want.includes('animeType')){
     const at = topN(countBy(S.data.anime, r=>r.Type), 8);
@@ -2803,6 +2950,7 @@ async function bootData(){
     splash(t(API.connected?'splash.connect':'splash.local'), 35);
     await API.load();
     splash(t('splash.ready'), 100);
+    paintBuildStamp();
     if(API.connected) toast(t('sync'),'ok');
   }catch(e){
     if(!API.restoreCache()) toast(String(e.message||e),'err');
