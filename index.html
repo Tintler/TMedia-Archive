@@ -510,10 +510,14 @@ tbody tr:last-child td{border-bottom:none}
 .cover-score.big{font-size:16px;padding:4px 9px;top:8px;right:8px}
 .pf-mark{
   display:inline-flex;align-items:center;justify-content:center;
-  width:22px;height:22px;border-radius:6px;margin-right:8px;flex-shrink:0;
-  font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;
-  font-style:normal;letter-spacing:.02em;
+  width:26px;height:26px;border-radius:7px;margin-right:9px;flex-shrink:0;
+  background:color-mix(in srgb, var(--pfc) 18%, transparent);
+  border:1px solid color-mix(in srgb, var(--pfc) 45%, transparent);
+  font-style:normal;
 }
+.pf-mark img{width:15px;height:15px;display:block}
+.pf-mark b{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--pfc);letter-spacing:.02em}
+.profile-row{padding:7px 0}
 .profile-name{display:flex;align-items:center;min-width:0}
 /* rafın arkasında sekiz kapak */
 .spine-art{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr)}
@@ -521,14 +525,15 @@ tbody tr:last-child td{border-bottom:none}
   .spine-art{grid-template-columns:repeat(8,1fr);grid-template-rows:1fr}
 }
 /* akıştaki kapaklar ve yazılar biraz büyüsün */
-.feed-row{grid-template-columns:44px 84px minmax(0,1fr) auto auto 100px;gap:14px;padding:10px 14px}
-.feed-thumb{width:44px;height:62px;border-radius:5px}
-.feed-title{font-size:15px}
-.feed-bits{font-size:12px}
-.feed-score{font-size:14px}
-.feed-date{font-size:11.5px}
+.feed-row{grid-template-columns:58px 92px minmax(0,1fr) auto auto 110px;gap:16px;padding:12px 16px}
+.feed-thumb{width:58px;height:82px;border-radius:6px}
+.feed-tag{font-size:10px;padding:3px 8px}
+.feed-title{font-size:16.5px;font-weight:650}
+.feed-bits{font-size:13px}
+.feed-score{font-size:16px}
+.feed-date{font-size:12.5px}
 @media(max-width:720px){
-  .feed-row{grid-template-columns:44px minmax(0,1fr) auto}
+  .feed-row{grid-template-columns:58px minmax(0,1fr) auto}
 }
 </style>
 </head>
@@ -825,26 +830,39 @@ for (const id of SEC_IDS){
 
 /* Accounts shown on the home page. Usernames live in the Sheet's settings;
    these are the starting values, used until something is saved over them. */
-const PLATFORMS = ['PlayStation Network','Xbox','Nintendo','Steam','Epic Games','GOG',
-                   'Origin','Uplay','MyAnimeList','IMDb','Goodreads','Backloggd'];
-/* Küçük renkli rozetler — marka logosu kullanmadan tanınır kalsın diye. */
+const PLATFORMS = ['PlayStation Network','Xbox','Nintendo','Steam','Battle.net','Epic Games',
+                   'GOG','Origin','Uplay','MyAnimeList','IMDb','Goodreads','Backloggd'];
+/* Servis işaretleri. Simgeler Simple Icons'tan (cdn.simpleicons.org) marka
+   renginde çekilir; adres bir gün çalışmazsa yerine harf rozeti düşer. */
 const PLATFORM_MARKS = {
-  'PlayStation Network':{t:'PS', c:'#2E6DE6'},
-  'Xbox':               {t:'XB', c:'#3FA037'},
-  'Nintendo':           {t:'NS', c:'#D63A2F'},
-  'Steam':              {t:'ST', c:'#4B6C8C'},
-  'Epic Games':         {t:'EG', c:'#5A5A5A'},
-  'GOG':                {t:'GG', c:'#8B45B0'},
-  'Origin':             {t:'OR', c:'#E8641A'},
-  'Uplay':              {t:'UP', c:'#1E8FD6'},
-  'MyAnimeList':        {t:'MA', c:'#2E51A2'},
-  'IMDb':               {t:'IM', c:'#D6B12A'},
-  'Goodreads':          {t:'GR', c:'#8A6440'},
-  'Backloggd':          {t:'BL', c:'#3E9C8F'}
+  'PlayStation Network':{t:'PS', c:'#3E86E0', icon:'playstation'},
+  'Xbox':               {t:'XB', c:'#5DBF4A', icon:'xbox'},
+  'Nintendo':           {t:'NS', c:'#E4544B', icon:'nintendoswitch'},
+  'Steam':              {t:'ST', c:'#7FA6C9', icon:'steam'},
+  'Battle.net':         {t:'BN', c:'#4FA3F0', icon:'battledotnet'},
+  'Epic Games':         {t:'EG', c:'#B9BDC4', icon:'epicgames'},
+  'GOG':                {t:'GG', c:'#B06FD8', icon:'gogdotcom'},
+  'Origin':             {t:'OR', c:'#F0813E', icon:'ea'},
+  'Uplay':              {t:'UP', c:'#4FA3F0', icon:'ubisoft'},
+  'MyAnimeList':        {t:'MA', c:'#5A7BD4', icon:'myanimelist'},
+  'IMDb':               {t:'IM', c:'#E3B23C', icon:'imdb'},
+  'Goodreads':          {t:'GR', c:'#C09A72', icon:'goodreads'},
+  'Backloggd':          {t:'BL', c:'#4FBFAE', icon:''}
 };
+function platformMark(pf){
+  const m = PLATFORM_MARKS[pf] || {t:pf.slice(0,2).toUpperCase(), c:'#8A94A6', icon:''};
+  const harf = esc(m.t);
+  const inner = m.icon
+    ? `<img src="https://cdn.simpleicons.org/${m.icon}/${m.c.replace('#','')}" alt=""
+         onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.t}))"
+         data-t="${harf}">`
+    : `<b>${harf}</b>`;
+  return `<i class="pf-mark" style="--pfc:${m.c}">${inner}</i>`;
+}
 
 const DEFAULT_PROFILES = {
   'PlayStation Network':'TintlerTR',
+  'Battle.net':'Tintler',
   'Xbox':'Tintler',
   'Nintendo':'Tintler',
   'Steam':'Tintler',
@@ -1487,9 +1505,8 @@ function renderProfiles(){
   $('#profiles').innerHTML = PLATFORMS.map(pf=>{
     const v = S.settings[pf] || '';
     if(!S.auth && !v) return '';
-    const mark = PLATFORM_MARKS[pf] || {t:pf.slice(0,2).toUpperCase(), c:'#5A6472'};
     return `<div class="profile-row">
-      <span class="profile-name"><i class="pf-mark" style="background:${mark.c}">${esc(mark.t)}</i>${esc(pf)}</span>
+      <span class="profile-name">${platformMark(pf)}${esc(pf)}</span>
       ${S.auth
         ? `<input type="text" data-pf="${esc(pf)}" value="${esc(v)}" placeholder="${esc(t('home.username'))}">`
         : `<span class="profile-val mono">${esc(v)}</span>`}
@@ -1829,12 +1846,11 @@ function openDetail(secId, rec, isNew){
       </div>
     </div>
 
-    ${S.auth ? progressBlock + trackBlock : ''}
+    ${progressBlock}
+    ${trackBlock}
 
     <div class="sub-h">${esc(t('d.details'))}</div>
-    ${importedHTML}
-
-    ${S.auth ? '' : progressBlock + trackBlock}`;
+    ${importedHTML}`;
 
   $('#dtFoot').innerHTML = S.auth
     ? `${DT.isNew?'':`<button class="btn btn-danger" id="dtDel">${esc(t('delete'))}</button>`}
