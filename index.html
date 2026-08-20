@@ -720,7 +720,7 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbzzHGvCnCI4JtW3B0YfqBuY4RPkfKSJKQ0eeYwnmhJsNGD41RJgmuzhy8NQ2K0jGAapQg/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyqfcTr6I57K5CjpVxbJcEYKIUQRxHkM-2Q8gQ7CM60a7E829N2qXw2Q1I_oSE05vvd/exec';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -2204,7 +2204,7 @@ async function runImport(){
   $('#impProg').classList.remove('hidden'); $('#impMsg').classList.remove('hidden');
   const bar = $('#impProg i'), msg = $('#impMsg');
   const CHUNK = 400, total = IMP.rows.length;
-  let added=0, updated=0;
+  let added=0, updated=0, frozen=0;
   try{
     for(let i=0;i<total;i+=CHUNK){
       const slice = IMP.rows.slice(i, i+CHUNK);
@@ -2215,12 +2215,12 @@ async function runImport(){
         fillIfEmpty:s.fillOnImport, freezeOnUpdate:s.freezeOnUpdate,
         freezeWhen:s.freezeWhen, rows:slice
       });
-      added += res.added||0; updated += res.updated||0;
+      added += res.added||0; updated += res.updated||0; frozen += res.frozen||0;
       bar.style.width = Math.round(Math.min(i+CHUNK,total)/total*100)+'%';
     }
     await API.load();
     close$('#ovImport');
-    toast(`${t('import.done')} — +${added} / ↻${updated}`,'ok');
+    toast(`${t('import.done')} — +${added} / ↻${updated}${frozen?` / ⏸${frozen}`:''}`,'ok');
     renderSection();
   }catch(e){
     msg.innerHTML = `<span style="color:var(--red)">${esc(e.message||e)}</span>`;
