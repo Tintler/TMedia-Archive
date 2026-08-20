@@ -574,6 +574,22 @@ tbody tr:last-child td{border-bottom:none}
 }
 .rp b{font-family:var(--display);font-size:17px;font-weight:700;color:var(--paper);letter-spacing:-.02em}
 
+/* ---- bakım paneli ---- */
+.job-list{display:flex;flex-direction:column;gap:6px}
+.job-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:10px 12px;border-radius:var(--r-sm);background:var(--panel);
+  border:1px solid var(--edge-soft);
+}
+.job-row span{display:flex;flex-direction:column;gap:2px;font-size:13.5px;min-width:0}
+.job-row small{font-family:var(--mono);font-size:10px;color:var(--muted-2);letter-spacing:.06em}
+.job-out{
+  margin:16px 0 0;padding:14px;border-radius:var(--r-sm);
+  background:var(--ink);border:1px solid var(--edge);
+  font-family:var(--mono);font-size:11.5px;line-height:1.6;color:var(--muted);
+  max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+}
+
 /* ---- son ayarlamalar ---- */
 .ro-value{
   padding:7px 0;font-size:14px;color:var(--paper);
@@ -632,6 +648,7 @@ tbody tr:last-child td{border-bottom:none}
       <button id="langEn" class="on">EN</button>
       <button id="langTr">TR</button>
     </div>
+    <button class="btn btn-sm hidden" id="btnTools">🛠 <span data-i18n="tools">Tools</span></button>
     <button class="btn btn-sm" id="btnExportAll"><span data-i18n="export">Export</span></button>
     <button class="btn btn-sm" id="authBtn"><span class="dot" id="authDot"></span><span data-i18n="login">Log in</span></button>
   </div>
@@ -751,6 +768,16 @@ tbody tr:last-child td{border-bottom:none}
   </div>
 </div></div>
 
+<div class="overlay" id="ovTools"><div class="modal modal-lg">
+  <div class="modal-head"><h2 data-i18n="tools.title">Maintenance</h2><button class="x" data-close>✕</button></div>
+  <div class="modal-body">
+    <p class="section-hint" data-i18n="tools.hint">These run on the server. Each pass stops before Google's six minute limit and picks up where it left off, so a long job is repeated automatically until it finishes.</p>
+    <div class="job-list" id="jobList"></div>
+    <pre class="job-out hidden" id="jobOut"></pre>
+  </div>
+  <div class="modal-foot"><button class="btn" data-close data-i18n="close">Close</button></div>
+</div></div>
+
 <div class="overlay" id="ovImport"><div class="modal modal-lg">
   <div class="modal-head"><h2 id="impHead" data-i18n="import.title">Import</h2><button class="x" data-close>✕</button></div>
   <div class="modal-body" id="impBody"></div>
@@ -766,7 +793,7 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwDcisFUq-4JGTb6xF0MZdFMPjVKqOdUL5cUiRvuXLFdgjFWbrl8DHtTvxG0m4Rv8_YBQ/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbznyTIuBmbzeHFV-59GRFalXRFVk0oK91j05zuyD0WLPuGpBAsDWKPhb4Al6WOPCbS29A/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
@@ -812,8 +839,10 @@ const SECTIONS = {
     title:'Game name', sub:'Platform', score:'Rating (Score)', scoreMax:10,
     status:'Status', statStatus:'Completion', year:'Game release date', added:'Date added',
     imported:['IGDB ID','Game name','Game release date','IGDB Edition ID','Game Edition name','Platform','Type','Status','Completion','Ownership','Acquisition','State','Format','Digital service','Subscription','Playtime','Times completed','Completion date','Completion date type','Progress notes','Borrowed from','Returned to owner','Lent to','Lent out','Condition','Region','Collection notes','Amount paid','Acquisition date','Acquisition Source','Additional Cost','Game condition','Manual condition','Box condition','Manual progress','Acquisition Notes','Rating (Score)','Rating (Gameplay)','Rating (Sound)','Rating (Story)','Rating (Visual)','Rating (Accessibility)','Tags','Date added','Last updated'],
-    local:[...LOCAL_COMMON],
-    defaultCols:['Cover','Game name','Platform','Status','Completion','Playtime','Rating (Score)','Last updated'],
+    /* Genres, Themes ve Franchises IGDB'den toplu olarak doldurulur.
+       "local" oldukları için içe aktarma bunlara hiç dokunmaz. */
+    local:[...LOCAL_COMMON, 'Genres', 'Themes', 'Franchises'],
+    defaultCols:['Cover','Game name','Platform','Status','Completion','Playtime','Rating (Score)','Genres'],
     startFilters:{'Status':'Played'}, startSort:{by:'Rating (Score)', dir:-1},
     /* Bitmiş bir oyunun damgası dışa aktarımlarda boşuna tazelenmesin;
        hâlâ oynananlarda güncellensin. */
@@ -822,10 +851,11 @@ const SECTIONS = {
     filters:[
       {f:'Platform',t:'select'},{f:'Status',t:'select'},{f:'Completion',t:'select'},
       {f:'Ownership',t:'select'},{f:'Format',t:'select'},{f:'Digital service',t:'select'},
+      {f:'Genres',t:'multi'},{f:'Themes',t:'multi'},{f:'Franchises',t:'select'},
       {f:'Rating (Score)',t:'range'},{f:'Game release date',t:'yearRange'}
     ],
     charts:['scores','status','year','platform'],
-    sorts:['Game name','Rating (Score)','Playtime','Game release date','Date added','Last updated','Platform','Status']
+    sorts:['Game name','Rating (Score)','Playtime','Game release date','Date added','Last updated','Platform','Status','Franchises']
   },
 
   anime: {
@@ -1012,6 +1042,21 @@ const I18N = {
     'lk.hint':'Optional. Fill the fields from the source, then edit anything you like — or skip this and type everything by hand.',
     'lk.filled':'Fields filled from the source',
     'd.myRating':'Your rating','d.noRating':'Not rated yet','d.votes':'votes',
+    tools:'Tools','tools.title':'Maintenance',
+    'tools.hint':"These run on the server. Each pass stops before Google's six minute limit and picks up where it left off, so a long job repeats automatically until it finishes.",
+    'tools.run':'Run','tools.running':'Running…','tools.pass':'pass',
+    'tools.done':'Finished','tools.added':'filled','tools.blank':'nothing at the source',
+    'tools.skipped':'skipped','tools.left':'still to do','tools.moved':'moved to Drive',
+    'job.fillGameCovers':'Game covers — IGDB',
+    'job.fillScreenCovers':'Film & TV posters — OMDb',
+    'job.fillAnimeCovers':'Anime covers — AniList',
+    'job.fillMangaCovers':'Manga covers — AniList',
+    'job.fillBookCovers':'Book covers — Open Library',
+    'job.fillGameGenres':'Game genres, themes and series — IGDB',
+    'job.rehostCovers':'Move outside covers onto Drive',
+    'job.backfillIds':'Fill in missing row ids',
+    'job.diagnose':'Setup check',
+    'job.freezeReport':'Last updated report',
     'd.deleted':'Deleted','d.confirm':'Delete this record for good?','d.fetchCover':'Find cover',
     'd.noCover':'No cover found','d.open':'Open source page',
     'd.needApi':'Connect the Google Sheet first — this lookup runs on the server.',
@@ -1073,6 +1118,21 @@ const I18N = {
     'lk.hint':'İsteğe bağlı. Alanları kaynaktan doldurur, sonra dilediğini değiştirirsin — ya da hiç kullanmadan elle yazarsın.',
     'lk.filled':'Alanlar kaynaktan dolduruldu',
     'd.myRating':'Verdiğin puan','d.noRating':'Henüz puanlanmadı','d.votes':'oy',
+    tools:'Araçlar','tools.title':'Bakım',
+    'tools.hint':'Bunlar sunucuda çalışır. Her tur Google’ın altı dakikalık sınırından önce durur ve kaldığı yerden devam eder; uzun işler kendiliğinden tekrarlanarak biter.',
+    'tools.run':'Çalıştır','tools.running':'Çalışıyor…','tools.pass':'tur',
+    'tools.done':'Bitti','tools.added':'dolduruldu','tools.blank':'kaynakta yok',
+    'tools.skipped':'atlandı','tools.left':'kalan',"tools.moved":'Drive’a taşındı',
+    'job.fillGameCovers':'Oyun kapakları — IGDB',
+    'job.fillScreenCovers':'Film & dizi afişleri — OMDb',
+    'job.fillAnimeCovers':'Anime kapakları — AniList',
+    'job.fillMangaCovers':'Manga kapakları — AniList',
+    'job.fillBookCovers':'Kitap kapakları — Open Library',
+    'job.fillGameGenres':'Oyun türleri, temaları ve serileri — IGDB',
+    'job.rehostCovers':'Dışarıdaki kapakları Drive’a taşı',
+    'job.backfillIds':'Eksik satır kimliklerini doldur',
+    'job.diagnose':'Kurulum kontrolü',
+    'job.freezeReport':'Last updated raporu',
     'd.deleted':'Silindi','d.confirm':'Bu kayıt tamamen silinsin mi?','d.fetchCover':'Kapak bul',
     'd.noCover':'Kapak bulunamadı','d.open':'Kaynak sayfayı aç',
     'd.needApi':'Önce Google Sheet’i bağla — bu arama sunucu tarafında çalışıyor.',
@@ -1919,7 +1979,7 @@ function ratingBlock(secId, r){
     <div class="rating-main ${v>0?'':'none'}">
       <span class="rating-num">${v>0?esc(v):'—'}</span>
       <span class="rating-max">/ ${s.scoreMax}</span>
-      <span class="rating-lbl">${esc(v>0 ? t('d.myRating') : t('d.noRating'))}</span>
+      ${v>0?'':`<span class="rating-lbl">${esc(t('d.noRating'))}</span>`}
     </div>
     ${extras.length?`<div class="rating-extra">${extras.join('')}</div>`:''}
   </div>`;
@@ -2298,6 +2358,75 @@ async function uploadCover(file){
   btn.disabled = false; btn.textContent = t('d.upload');
 }
 
+/* ---------- 12c. BAKIM PANELİ ---------------------------------------- */
+const JOBS = ['fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
+              'fillBookCovers','fillGameGenres','rehostCovers','backfillIds',
+              'diagnose','freezeReport'];
+let JOB_BUSY = false;
+
+function openTools(){
+  $('#jobOut').classList.add('hidden');
+  $('#jobList').innerHTML = JOBS.map(j=>
+    `<div class="job-row">
+       <span>${esc(t('job.'+j))}<small>${esc(j)}</small></span>
+       <button class="btn btn-sm" data-job="${j}">${esc(t('tools.run'))}</button>
+     </div>`).join('');
+  $$('#jobList button[data-job]').forEach(b=> b.onclick = ()=> runJob(b.dataset.job, b));
+  open$('#ovTools');
+}
+
+/* Uzun işler tek çağrıya sığmaz; sunucu "devam var" derse kendiliğinden
+   yeniden çağrılır. */
+async function runJob(job, btn){
+  if(JOB_BUSY) return;
+  JOB_BUSY = true;
+  const out = $('#jobOut');
+  out.classList.remove('hidden');
+  out.textContent = '';
+  $$('#jobList button[data-job]').forEach(b=> b.disabled = true);
+  const eskiEtiket = btn.textContent;
+
+  const yaz = line => { out.textContent += line + '\n'; out.scrollTop = out.scrollHeight; };
+  const toplam = {done:0, blank:0, skipped:0};
+  const basla = Date.now();
+
+  try{
+    for(let tur=1; tur<=20; tur++){
+      btn.innerHTML = `<span class="spinner"></span>`;
+      yaz(`${t('tools.pass')} ${tur} — ${t('tools.running')}`);
+      const res = await API.post('task', {job});
+      const r = res.result || {};
+
+      if(r.text){ yaz(r.text); break; }
+
+      toplam.done    += r.done||0;
+      toplam.blank   += r.blank||0;
+      toplam.skipped += r.skipped||0;
+      const satir = [
+        `${t('tools.added')}: ${r.done||0}`,
+        r.blank    ? `${t('tools.blank')}: ${r.blank}` : '',
+        r.skipped  ? `${t('tools.skipped')}: ${r.skipped}` : '',
+        r.left     ? `${t('tools.left')}: ${r.left}` : ''
+      ].filter(Boolean).join(' · ');
+      yaz('   ' + satir);
+      (r.notes||[]).forEach(n=> yaz('   ' + n));
+
+      if(!r.ranOut) break;
+    }
+    const sn = Math.round((Date.now()-basla)/1000);
+    yaz(`${t('tools.done')} — ${t('tools.added')}: ${toplam.done}` +
+        (toplam.blank?` · ${t('tools.blank')}: ${toplam.blank}`:'') +
+        (toplam.skipped?` · ${t('tools.skipped')}: ${toplam.skipped}`:'') +
+        `  (${sn}s)`);
+    await API.load();
+    S.page==='home'?renderHome():(S.page==='stats'?renderStats():renderSection());
+  }catch(e){ yaz('HATA: ' + (e.message||e)); }
+
+  btn.textContent = eskiEtiket;
+  $$('#jobList button[data-job]').forEach(b=> b.disabled = false);
+  JOB_BUSY = false;
+}
+
 /* ---------- 13. COLUMN PICKER ----------------------------------------- */
 function openCols(){
   const secId = S.sec, s = SECTIONS[secId];
@@ -2443,6 +2572,7 @@ function paintAuth(){
   lbl.dataset.i18n = S.auth ? 'logout' : 'login';
   lbl.textContent = t(S.auth?'logout':'login');
   $('#btnAdd').classList.toggle('hidden', !S.auth);
+  $('#btnTools').classList.toggle('hidden', !(S.auth && API.connected));
 }
 async function doLogin(){
   const pw = $('#inPw').value;
@@ -2648,6 +2778,7 @@ $('#btnFilters').onclick = ()=> $('#filterBar').classList.toggle('on');
 $('#btnCols').onclick = openCols;
 $('#btnImport').onclick = openImport;
 $('#btnExportAll').onclick = exportXlsx;
+$('#btnTools').onclick = openTools;
 $('#btnAdd').onclick = ()=>{
   const s = SECTIONS[S.sec], rec = {};
   s.columns.forEach(c=> rec[c]='');
