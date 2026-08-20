@@ -685,6 +685,7 @@ tbody tr:last-child td{border-bottom:none}
   <div class="modal-body">
     <p class="section-hint" data-i18n="auth.hint">The site is read-only for visitors.</p>
     <div class="field"><label data-i18n="auth.pw">Password</label><input type="password" id="inPw" placeholder="••••••••"></div>
+    <p class="mono muted" id="srvVer" style="font-size:10.5px;margin:14px 0 0"></p>
   </div>
   <div class="modal-foot">
     <button class="btn" data-close data-i18n="cancel">Cancel</button>
@@ -720,7 +721,7 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyqfcTr6I57K5CjpVxbJcEYKIUQRxHkM-2Q8gQ7CM60a7E829N2qXw2Q1I_oSE05vvd/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwGlGsxgKaldBAjtKq4GJY0xnamy3d2OQousIeQKQik_gn6q75u6G-yVznZplBlHI0H3w/exec';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1051,6 +1052,7 @@ const S = {
   filters: {},                    // sec -> {field:value}
   search: {},
   settings: {},                   // platform usernames
+  serverVersion: '',              // hangi Apps Script dağıtımına bağlıyız
   api: LS.get('api','') || DEFAULT_API,
   token: LS.get('token',''),
   auth: false,
@@ -1167,6 +1169,7 @@ const API = {
       }) : [];
     });
     S.settings = withDefaultProfiles(json.settings);
+    S.serverVersion = json.version || '';
     this.cache();
     return true;
   },
@@ -2419,6 +2422,9 @@ $('#langEn').onclick = ()=>setLang('en');
 $('#langTr').onclick = ()=>setLang('tr');
 $('#authBtn').onclick = ()=>{
   if(S.auth) return doLogout();
+  $('#srvVer').textContent = S.serverVersion
+    ? 'server: ' + S.serverVersion
+    : (API.connected ? 'server: (sürüm bildirmiyor — eski dağıtım)' : 'server: yok');
   open$('#ovAuth'); setTimeout(()=>$('#inPw').focus(), 60);
 };
 $('#btnDoLogin').onclick = doLogin;
