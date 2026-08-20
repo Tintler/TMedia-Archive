@@ -494,6 +494,38 @@ tbody tr:last-child td{border-bottom:none}
 .top5-item:hover .cover{border-color:var(--brass)}
 .top5-item img{width:100%;height:100%;object-fit:cover}
 
+/* ---- şu anda oynananlar ---- */
+.playing{margin-top:38px}
+.playing-h{
+  font-family:var(--display);font-weight:800;font-variation-settings:"wdth" 84;
+  font-size:clamp(24px,3.4vw,38px);letter-spacing:-.02em;text-transform:uppercase;
+  margin:0 0 6px;display:flex;gap:.35em;flex-wrap:wrap;
+}
+.playing-h em{font-style:normal;color:var(--brass)}
+.playing::after{
+  content:"";display:block;width:64px;height:3px;border-radius:2px;
+  background:var(--brass);margin-bottom:20px;
+}
+.playing-row{
+  display:grid;gap:18px;
+  grid-template-columns:repeat(auto-fill,minmax(178px,1fr));
+}
+.playing-card{
+  text-align:left;cursor:pointer;transition:transform .18s cubic-bezier(.2,.8,.2,1);
+}
+.playing-card:hover{transform:translateY(-5px)}
+.playing-card .cover{
+  position:relative;aspect-ratio:2/3;border-radius:var(--r-sm);overflow:hidden;
+  border:1px solid var(--edge);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 14px 30px -18px rgba(0,0,0,.9);
+}
+.playing-card:hover .cover{border-color:var(--brass)}
+.playing-card img{width:100%;height:100%;object-fit:cover;display:block}
+.playing-card .card-title{font-size:14.5px;margin-top:10px}
+@media(max-width:520px){
+  .playing-row{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
+}
+
 /* ---- son ayarlamalar ---- */
 .ro-value{
   padding:7px 0;font-size:14px;color:var(--paper);
@@ -566,6 +598,11 @@ tbody tr:last-child td{border-bottom:none}
       </div>
       <div class="shelf" id="shelf"></div>
       <div class="home-strip" id="homeStrip"></div>
+      <section class="playing hidden" id="playingWrap">
+        <h2 class="playing-h"><span data-i18n="home.playing1">Currently</span>
+          <em data-i18n="home.playing2">playing</em></h2>
+        <div class="playing-row" id="playingRow"></div>
+      </section>
       <div class="home-cols">
         <div>
           <div class="sub-h" data-i18n="home.feed">Activity</div>
@@ -877,6 +914,7 @@ const I18N = {
     'home.t1':"Everything I've played,",'home.t2':'watched and read.',
     'home.total':'Total records','home.hours':'Hours played','home.eps':'Episodes watched',
     'home.chapters':'Chapters read (Manga)','home.pages':'Pages read (Books)',
+    'home.playing1':'Currently','home.playing2':'playing',
     'home.feed':'Activity','home.profiles':'Profiles','home.noFeed':'Nothing here yet.',
     'home.saveProfiles':'Save usernames','home.savedProfiles':'Usernames saved',
     'home.username':'username',
@@ -930,6 +968,7 @@ const I18N = {
     'home.t1':'Oynadığım, izlediğim','home.t2':'ve okuduğum her şey.',
     'home.total':'Toplam kayıt','home.hours':'Oynanan saat','home.eps':'İzlenen bölüm',
     'home.chapters':'Okunan bölüm (Manga)','home.pages':'Okunan sayfa (Kitap)',
+    'home.playing1':'Şu anda','home.playing2':'oynuyorum',
     'home.feed':'Akış','home.profiles':'Hesaplarım','home.noFeed':'Burada henüz bir şey yok.',
     'home.saveProfiles':'Kullanıcı adlarını kaydet','home.savedProfiles':'Kullanıcı adları kaydedildi',
     'home.username':'kullanıcı adı',
@@ -1431,8 +1470,39 @@ function renderHome(){
   $('#homeStrip').innerHTML = cells.map(([k,v])=>
     `<div class="strip-cell"><div class="strip-k">${esc(k)}</div><div class="strip-v">${esc(v)}</div></div>`).join('');
 
+  renderPlaying();
   renderFeed();
   renderProfiles();
+}
+
+/* Elindeki oyunlardan Status'u Playing olanlar, ana sayfanın başında. */
+function renderPlaying(){
+  const s = SECTIONS.games;
+  const list = S.data.games
+    .filter(r=> String(r.Status||'').trim().toLowerCase()==='playing')
+    .sort((a,b)=> compareCells(a['Last updated'], b['Last updated'], -1));
+
+  $('#playingWrap').classList.toggle('hidden', !list.length);
+  if(!list.length){ $('#playingRow').innerHTML=''; return; }
+
+  $('#playingRow').innerHTML = list.map(r=>{
+    const title = r[s.title]||'—';
+    const img = nz(r.Cover)
+      ? `<img src="${esc(r.Cover)}" alt="" loading="lazy">`
+      : `<div class="cover-fallback">${esc(initials(title))}</div>`;
+    const alt = [cardSub('games', r), nz(r.Completion)&&r.Completion!=='No Status'?r.Completion:'',
+                 numOf(r.Playtime)>0?fmtHours(r.Playtime):''].filter(Boolean).join(' · ');
+    return `<button class="playing-card" data-sec="games" data-id="${esc(r._id)}">
+      <div class="cover" style="background:${tintFor(title)}">${img}</div>
+      <div class="card-title">${esc(title)}</div>
+      <div class="card-sub">${esc(alt)}</div>
+    </button>`;
+  }).join('');
+
+  $$('#playingRow .playing-card').forEach(b=> b.onclick = ()=>{
+    const rec = S.data.games.find(x=>x._id===b.dataset.id);
+    if(rec) openDetail('games', rec);
+  });
 }
 
 /* ---------- 8b. ACTIVITY FEED ---------------------------------------- */
