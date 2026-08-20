@@ -720,7 +720,7 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwciYDj3vnBPcNZfR98NTcYOi_QIsy0h8DtdoOxMgaCTigehYsLFwgMw9r4Jd50Le5wcQ/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbzzHGvCnCI4JtW3B0YfqBuY4RPkfKSJKQ0eeYwnmhJsNGD41RJgmuzhy8NQ2K0jGAapQg/exec';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -765,6 +765,9 @@ const SECTIONS = {
     local:[...LOCAL_COMMON],
     defaultCols:['Cover','Game name','Platform','Status','Completion','Playtime','Rating (Score)','Last updated'],
     startFilters:{'Status':'Played'}, startSort:{by:'Rating (Score)', dir:-1},
+    /* Bitmiş bir oyunun damgası dışa aktarımlarda boşuna tazelenmesin;
+       hâlâ oynananlarda güncellensin. */
+    freezeWhen:[{column:'Last updated', field:'Status', equals:['Played']}],
     top:['Status','Completion'],
     filters:[
       {f:'Platform',t:'select'},{f:'Status',t:'select'},{f:'Completion',t:'select'},
@@ -861,6 +864,8 @@ for (const id of SEC_IDS){
   s.columns = ['_id', ...s.imported, ...s.local];   // sheet column order
   s.protect = s.local.slice();                       // never overwritten on import
   s.fillOnImport = s.fillOnImport || [];             // ...unless the cell is still empty
+  s.freezeOnUpdate = s.freezeOnUpdate || [];         // written once, never refreshed
+  s.freezeWhen = s.freezeWhen || [];                 // ...or only in certain states
 }
 
 /* Accounts shown on the home page. Usernames live in the Sheet's settings;
@@ -1248,7 +1253,15 @@ const API = {
       p.rows.forEach(inc=>{
         const k = keyOf(inc), cur = map.get(k);
         if(cur){
-          sec.imported.forEach(c=>{ if(inc[c]!==undefined) cur[c]=inc[c]; });
+          const donmus = new Set(sec.freezeOnUpdate);
+          sec.freezeWhen.forEach(k=>{
+            const v = String((inc[k.field]!==undefined ? inc[k.field] : cur[k.field]) || '').trim();
+            if(k.equals.some(x=> x.toLowerCase()===v.toLowerCase())) donmus.add(k.column);
+          });
+          sec.imported.forEach(c=>{
+            if(donmus.has(c)) return;
+            if(inc[c]!==undefined) cur[c]=inc[c];
+          });
           (sec.fillOnImport||[]).forEach(c=>{ if(!nz(cur[c]) && nz(inc[c])) cur[c]=inc[c]; });
           updated++;
         }else{
@@ -2199,7 +2212,8 @@ async function runImport(){
       const res = await API.post('import', {
         section:secId, sheet:s.sheet, columns:s.columns,
         key:s.key, protect:s.protect, importable:s.imported,
-        fillIfEmpty:s.fillOnImport, rows:slice
+        fillIfEmpty:s.fillOnImport, freezeOnUpdate:s.freezeOnUpdate,
+        freezeWhen:s.freezeWhen, rows:slice
       });
       added += res.added||0; updated += res.updated||0;
       bar.style.width = Math.round(Math.min(i+CHUNK,total)/total*100)+'%';
