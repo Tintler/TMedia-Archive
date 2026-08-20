@@ -876,6 +876,7 @@ const I18N = {
     'home.eyebrow':"Tintler's media archive",
     'home.t1':"Everything I've played,",'home.t2':'watched and read.',
     'home.total':'Total records','home.hours':'Hours played','home.eps':'Episodes watched',
+    'home.chapters':'Chapters read (Manga)','home.pages':'Pages read (Books)',
     'home.feed':'Activity','home.profiles':'Profiles','home.noFeed':'Nothing here yet.',
     'home.saveProfiles':'Save usernames','home.savedProfiles':'Usernames saved',
     'home.username':'username',
@@ -928,6 +929,7 @@ const I18N = {
     'home.eyebrow':'Tintler’in medya arşivi',
     'home.t1':'Oynadığım, izlediğim','home.t2':'ve okuduğum her şey.',
     'home.total':'Toplam kayıt','home.hours':'Oynanan saat','home.eps':'İzlenen bölüm',
+    'home.chapters':'Okunan bölüm (Manga)','home.pages':'Okunan sayfa (Kitap)',
     'home.feed':'Akış','home.profiles':'Hesaplarım','home.noFeed':'Burada henüz bir şey yok.',
     'home.saveProfiles':'Kullanıcı adlarını kaydet','home.savedProfiles':'Kullanıcı adları kaydedildi',
     'home.username':'kullanıcı adı',
@@ -1423,8 +1425,8 @@ function renderHome(){
     [t('home.total'), all.length.toLocaleString(S.lang)],
     [t('home.hours'), Math.round(hours).toLocaleString(S.lang)],
     [t('home.eps'), eps.toLocaleString(S.lang)],
-    [t('k.chapters'), chapters.toLocaleString(S.lang)],
-    [t('k.pages'), pages.toLocaleString(S.lang)]
+    [t('home.chapters'), chapters.toLocaleString(S.lang)],
+    [t('home.pages'), pages.toLocaleString(S.lang)]
   ];
   $('#homeStrip').innerHTML = cells.map(([k,v])=>
     `<div class="strip-cell"><div class="strip-k">${esc(k)}</div><div class="strip-v">${esc(v)}</div></div>`).join('');
