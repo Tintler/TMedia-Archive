@@ -535,6 +535,23 @@ tbody tr:last-child td{border-bottom:none}
 .playing-card .card-title{font-size:14.5px;margin-top:10px}
 @media(max-width:520px){.playing-row{gap:14px}}
 
+/* ---- kaynaktan doldurma listesi ---- */
+.lk-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-bottom:6px}
+.lk-row{
+  display:flex;align-items:center;gap:12px;text-align:left;width:100%;
+  padding:8px 10px;border-radius:var(--r-sm);border:1px solid transparent;
+  background:var(--panel);transition:.15s;
+}
+.lk-row:hover{border-color:var(--brass);background:var(--panel-2)}
+.lk-row img,.lk-thumb-blank{width:34px;height:48px;border-radius:4px;object-fit:cover;flex-shrink:0}
+.lk-thumb-blank{
+  background:var(--panel-2);display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:800;font-size:12px;color:var(--muted-2);
+}
+.lk-row span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lk-row b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lk-row small{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
+
 /* ---- son ayarlamalar ---- */
 .ro-value{
   padding:7px 0;font-size:14px;color:var(--paper);
@@ -727,7 +744,7 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxwQqNVNkUP7zOxi9hqY7_vxYo50dLjUW12glqTvGx2SwMnknh6WUavUd36qgu9n5CnFg/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwDcisFUq-4JGTb6xF0MZdFMPjVKqOdUL5cUiRvuXLFdgjFWbrl8DHtTvxG0m4Rv8_YBQ/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
@@ -968,6 +985,10 @@ const I18N = {
     'd.cover2':'Cover','d.watched':'Watched episodes','d.totalEps':'Total episodes',
     'd.completion':'Completion','d.pickStatus':'Choose a status first',
     'd.progressBlock':'Status & progress',
+    'lk.title':'Look it up','lk.ph':'Type a title and search',
+    'lk.go':'Search','lk.none':'Nothing found','lk.searching':'Searching…',
+    'lk.hint':'Optional. Fill the fields from the source, then edit anything you like — or skip this and type everything by hand.',
+    'lk.filled':'Fields filled from the source',
     'd.deleted':'Deleted','d.confirm':'Delete this record for good?','d.fetchCover':'Find cover',
     'd.noCover':'No cover found','d.open':'Open source page',
     'd.needApi':'Connect the Google Sheet first — this lookup runs on the server.',
@@ -1024,6 +1045,10 @@ const I18N = {
     'd.cover2':'Kapak','d.watched':'İzlenen bölüm','d.totalEps':'Toplam bölüm',
     'd.completion':'Tamamlanma','d.pickStatus':'Önce bir durum seç',
     'd.progressBlock':'Durum ve ilerleme',
+    'lk.title':'Kaynaktan bul','lk.ph':'Adını yaz ve ara',
+    'lk.go':'Ara','lk.none':'Sonuç yok','lk.searching':'Aranıyor…',
+    'lk.hint':'İsteğe bağlı. Alanları kaynaktan doldurur, sonra dilediğini değiştirirsin — ya da hiç kullanmadan elle yazarsın.',
+    'lk.filled':'Alanlar kaynaktan dolduruldu',
     'd.deleted':'Silindi','d.confirm':'Bu kayıt tamamen silinsin mi?','d.fetchCover':'Kapak bul',
     'd.noCover':'Kapak bulunamadı','d.open':'Kaynak sayfayı aç',
     'd.needApi':'Önce Google Sheet’i bağla — bu arama sunucu tarafında çalışıyor.',
@@ -1550,12 +1575,28 @@ const FEED_DATES = {
   books:  ['Date Read','Date Added']
 };
 const FEED_LIMIT = 10;
+/* Sheet'te o sütun hangi biçimde duruyorsa yeni kayıtta da öyle yazılsın. */
+const FEED_DATE_STYLE = {games:'iso', anime:'day', manga:'day', screen:'day', books:'day'};
+function nowFor(secId){
+  const iso = new Date().toISOString();
+  return FEED_DATE_STYLE[secId]==='iso'
+    ? iso.replace(/\.\d+Z$/, '.000Z')
+    : iso.slice(0,10);
+}
+/* Elle eklenen kayıt akışta görünsün diye tarih alanını doldurur. */
+function stampNewRecord(secId, rec){
+  const alan = (FEED_DATES[secId]||[])[0];
+  if(alan && !nz(rec[alan])) rec[alan] = nowFor(secId);
+  if(secId==='games' && !nz(rec['Date added'])) rec['Date added'] = nowFor(secId);
+}
 
 function feedItems(){
   const out = [];
   SEC_IDS.forEach(id=>{
     const s = SECTIONS[id], fields = FEED_DATES[id] || [];
     S.data[id].forEach(r=>{
+      /* Oyunlarda akış yalnızca oynanan ve oynanmakta olanları gösterir. */
+      if(id==='games' && !/^(playing|played)$/i.test(String(r.Status||'').trim())) return;
       let when = null;
       for(const f of fields){
         const ms = asDate(r[f]);
@@ -1922,6 +1963,18 @@ function openDetail(secId, rec, isNew){
     : `<dl class="kv">${s.imported.filter(c=> !topKeys.includes(c) && nz(r[c])).map(c=>
         `<dt>${esc(colLabel(secId,c))}</dt><dd>${esc(fmtCell(secId,c,r[c]))}</dd>`).join('')}</dl>`;
 
+  /* Elle kayıt eklerken kaynaktan doldurma paneli. IGDB ya da OMDb
+     kapanırsa panel çalışmaz ama form elle doldurulmaya devam eder. */
+  const lookupBlock = (isNew && S.auth && API.connected && (secId==='games' || secId==='screen'))
+    ? `<div class="sub-h">${esc(t('lk.title'))}</div>
+       <p class="section-hint">${esc(t('lk.hint'))}</p>
+       <div style="display:flex;gap:8px;margin-bottom:12px">
+         <input type="text" id="lkQ" placeholder="${esc(t('lk.ph'))}" style="flex:1">
+         <button class="btn" id="lkGo">${esc(t('lk.go'))}</button>
+       </div>
+       <div id="lkResults"></div>`
+    : '';
+
   const progressBlock = tops.length
     ? `<div class="sub-h">${esc(t('d.progressBlock'))}</div><div class="form-grid">${topHTML}</div>`
     : '';
@@ -1935,6 +1988,7 @@ function openDetail(secId, rec, isNew){
     : (nz(r.Notes) ? `<div class="sub-h">${esc(t('d.notes'))}</div><p style="margin:0">${esc(r.Notes)}</p>` : '');
 
   $('#dtBody').innerHTML = `
+    ${lookupBlock}
     <div class="detail-top">
       <div class="detail-cover"><div class="cover" style="background:${tintFor(r[s.title])}">${cover}
         ${myScore>0?`<span class="cover-score big">${esc(myScore)}</span>`:''}</div>
@@ -1987,6 +2041,13 @@ function openDetail(secId, rec, isNew){
     if(stSel) stSel.onchange = paint;
   }
 
+  const lkGo = $('#lkGo');
+  if(lkGo){
+    const ara = ()=> runLookup(secId, $('#lkQ').value);
+    lkGo.onclick = ara;
+    $('#lkQ').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); ara(); } });
+  }
+
   const fb = $('#dtFetch');  if(fb) fb.onclick = fetchCover;
   const ub = $('#dtUpload'); if(ub) ub.onclick = ()=> $('#dtFile').click();
   const fi = $('#dtFile');   if(fi) fi.onchange = ()=> fi.files[0] && uploadCover(fi.files[0]);
@@ -2014,6 +2075,7 @@ async function saveDetail(){
   const btn = $('#dtSave'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try{
     const rec = collectDetail();
+    if(DT.isNew) stampNewRecord(DT.sec, rec);
     const res = await API.post('save', {section:DT.sec, record:rec});
     const saved = res.record || rec;
     const arr = S.data[DT.sec];
@@ -2033,6 +2095,72 @@ async function deleteDetail(){
     API.cache(); close$('#ovDetail'); toast(t('d.deleted'),'ok');
     S.page==='home'?renderHome():renderSection();
   }catch(e){ toast(String(e.message||e),'err'); }
+}
+
+/* ---------- 12b. ELLE EKLERKEN KAYNAKTAN DOLDURMA ------------------- */
+let LK = {results:[]};
+
+async function runLookup(secId, q){
+  q = String(q||'').trim();
+  if(!q) return;
+  const box = $('#lkResults'), btn = $('#lkGo');
+  box.innerHTML = `<p class="muted"><span class="spinner"></span> ${esc(t('lk.searching'))}</p>`;
+  btn.disabled = true;
+  try{
+    const res = await API.post('lookup', {section:secId, q});
+    LK.results = res.results || [];
+    if(!LK.results.length){ box.innerHTML = `<p class="muted">${esc(t('lk.none'))}</p>`; }
+    else{
+      box.innerHTML = `<div class="lk-list">` + LK.results.map((x,i)=>{
+        const alt = secId==='games'
+          ? [x.year, (x.platforms||[]).slice(0,3).join(', ')].filter(Boolean).join(' · ')
+          : [x.year, x.kind].filter(Boolean).join(' · ');
+        const th = x.cover
+          ? `<img src="${esc(x.cover)}" alt="" loading="lazy">`
+          : `<div class="lk-thumb-blank">${esc(initials(x.title))}</div>`;
+        return `<button class="lk-row" data-i="${i}">
+          ${th}
+          <span><b>${esc(x.title)}</b><small>${esc(alt)}</small></span>
+        </button>`;
+      }).join('') + `</div>`;
+      $$('#lkResults .lk-row').forEach(b=> b.onclick = ()=> pickLookup(secId, LK.results[+b.dataset.i]));
+    }
+  }catch(e){ box.innerHTML = `<p style="color:var(--red)">${esc(e.message||e)}</p>`; }
+  btn.disabled = false;
+}
+
+async function pickLookup(secId, item){
+  if(!item) return;
+  const box = $('#lkResults');
+  box.innerHTML = `<p class="muted"><span class="spinner"></span> ${esc(t('lk.searching'))}</p>`;
+  try{
+    const rec = Object.assign({}, DT.rec);
+    let kapak = item.cover || '';
+
+    if(secId==='games'){
+      rec['IGDB ID'] = item.id;
+      rec['Game name'] = item.title;
+      rec['Game release date'] = item.date || item.year || '';
+      if(!nz(rec.Platform) && (item.platforms||[]).length) rec.Platform = item.platforms[0];
+      if(!nz(rec.Tags) && item.genres) rec.Tags = item.genres;
+    }else{
+      const res = await API.post('lookupDetail', {section:secId, id:item.id});
+      const d = res.record;
+      if(!d) throw new Error(t('lk.none'));
+      kapak = d.__cover || kapak;
+      Object.keys(d).forEach(k=>{ if(k!=='__cover') rec[k] = d[k]; });
+    }
+
+    if(kapak){
+      try{
+        const m = await API.post('cover', {section:secId, url:kapak, key:coverLookupKey(secId, rec)});
+        rec.Cover = m.url || kapak;
+      }catch(err){ rec.Cover = kapak; }
+    }
+
+    openDetail(secId, rec, true);          // formu dolu haliyle yeniden çiz
+    toast(t('lk.filled'),'ok');
+  }catch(e){ box.innerHTML = `<p style="color:var(--red)">${esc(e.message||e)}</p>`; }
 }
 
 /* What each section can be looked up by. null = nothing to go on. */
@@ -2350,7 +2478,8 @@ function renderStats(){
   if(scope==='anime')  kpi.push([t('k.eps'), sumOf(S.data.anime,'Watched Episodes').toLocaleString(S.lang), '#B27BD4']);
   if(scope==='manga')  kpi.push([t('k.chapters'), sumOf(S.data.manga,'Read Chapters').toLocaleString(S.lang), '#57BFB3']);
   if(scope==='screen') kpi.push([t('k.runtime'), Math.round(sumOf(S.data.screen,'Runtime (mins)')/60).toLocaleString(S.lang), '#E4795B']);
-  kpi.push([t('k.completed'), items.filter(x=> /complet|beaten|finish|played|watched|read$/i.test(String(x.r[x.s.statStatus||x.s.status]||''))).length.toLocaleString(S.lang), '#63C08C']);
+  if(scope!=='screen')
+    kpi.push([t('k.completed'), items.filter(x=> /complet|beaten|finish|played|watched|read$/i.test(String(x.r[x.s.statStatus||x.s.status]||''))).length.toLocaleString(S.lang), '#63C08C']);
   $('#kpis').innerHTML = kpi.map(([k,v,c])=>`<div class="kpi" style="--kc:${c}"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
 
   /* Which charts this section gets is declared in its schema. */
