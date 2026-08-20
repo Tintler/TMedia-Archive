@@ -500,6 +500,36 @@ tbody tr:last-child td{border-bottom:none}
 .top5-item .cover{position:relative;aspect-ratio:2/3;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--edge-soft);display:flex;align-items:center;justify-content:center}
 .top5-item:hover .cover{border-color:var(--brass)}
 .top5-item img{width:100%;height:100%;object-fit:cover}
+
+/* ---- son ayarlamalar ---- */
+.ro-value{
+  padding:7px 0;font-size:14px;color:var(--paper);
+  border-bottom:1px solid var(--edge-soft);min-height:32px;
+}
+.cover-score{font-size:13px;padding:3px 7px;font-weight:700}
+.cover-score.big{font-size:16px;padding:4px 9px;top:8px;right:8px}
+.pf-mark{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:6px;margin-right:8px;flex-shrink:0;
+  font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;
+  font-style:normal;letter-spacing:.02em;
+}
+.profile-name{display:flex;align-items:center;min-width:0}
+/* rafın arkasında sekiz kapak */
+.spine-art{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr)}
+@media(max-width:820px){
+  .spine-art{grid-template-columns:repeat(8,1fr);grid-template-rows:1fr}
+}
+/* akıştaki kapaklar ve yazılar biraz büyüsün */
+.feed-row{grid-template-columns:44px 84px minmax(0,1fr) auto auto 100px;gap:14px;padding:10px 14px}
+.feed-thumb{width:44px;height:62px;border-radius:5px}
+.feed-title{font-size:15px}
+.feed-bits{font-size:12px}
+.feed-score{font-size:14px}
+.feed-date{font-size:11.5px}
+@media(max-width:720px){
+  .feed-row{grid-template-columns:44px minmax(0,1fr) auto}
+}
 </style>
 </head>
 <body>
@@ -535,7 +565,6 @@ tbody tr:last-child td{border-bottom:none}
     <div class="wrap">
       <div class="home-head">
         <div class="eyebrow" data-i18n="home.eyebrow">Tintler's media archive</div>
-        <h1 class="home-title"><span data-i18n="home.t1">Everything I've played,</span><em data-i18n="home.t2">watched and read.</em></h1>
       </div>
       <div class="shelf" id="shelf"></div>
       <div class="home-strip" id="homeStrip"></div>
@@ -614,9 +643,8 @@ tbody tr:last-child td{border-bottom:none}
 <div class="overlay" id="ovAuth"><div class="modal modal-sm">
   <div class="modal-head"><h2 data-i18n="auth.title">Log in to edit</h2><button class="x" data-close>✕</button></div>
   <div class="modal-body">
-    <p class="section-hint" data-i18n="auth.hint">The site is read-only for visitors. Enter your password to add, edit and import records.</p>
-    <div class="field"><label data-i18n="auth.api">Apps Script Web App URL</label><input type="text" id="inApi" placeholder="https://script.google.com/macros/s/…/exec"></div>
-    <div class="field" style="margin-top:12px"><label data-i18n="auth.pw">Password</label><input type="password" id="inPw" placeholder="••••••••"></div>
+    <p class="section-hint" data-i18n="auth.hint">The site is read-only for visitors.</p>
+    <div class="field"><label data-i18n="auth.pw">Password</label><input type="password" id="inPw" placeholder="••••••••"></div>
   </div>
   <div class="modal-foot">
     <button class="btn" data-close data-i18n="cancel">Cancel</button>
@@ -652,7 +680,7 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbytpzp3GYlNGRQqGd9R2BRCqUZmz8g52dcSUwFBssc1zxTDnisZaWx289Y09SLbpQuGNQ/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwciYDj3vnBPcNZfR98NTcYOi_QIsy0h8DtdoOxMgaCTigehYsLFwgMw9r4Jd50Le5wcQ/exec';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -683,7 +711,7 @@ const STATUS_SETS = {
   },
   anime: {field:'Status', options:['Watching','Completed','On-Hold','Dropped','Plan to Watch']},
   manga: {field:'Status', options:['Reading','Completed','On-Hold','Dropped','Plan to Read']},
-  books: {field:'Status', options:['Reading','Completed','On-Hold','Dropped','Plan to Read']}
+  books: {field:'Shelf', options:['Reading','Completed','On hold','Dropped','Plan to read']}
 };
 
 const SECTIONS = {
@@ -737,7 +765,7 @@ const SECTIONS = {
     imported:['MAL ID','Title','Total Volumes','Total Chapters','Read Volumes','Read Chapters','Score','Status','Start Date','Finish Date','Times Read','Rereading','Priority','Tags','Comments'],
     local:[...LOCAL_COMMON],
     defaultCols:['Cover','Title','Read Chapters','Total Chapters','Read Volumes','Score','Status'],
-    startFilters:{'Status':'Completed'}, startSort:{by:'Score', dir:-1},
+    startFilters:{}, startSort:{by:'Score', dir:-1},
     top:['Status','Read Chapters','Read Volumes'],
     charts:['scores','status'],
     filters:[{f:'Status',t:'select'},{f:'Priority',t:'select'},{f:'Score',t:'range'}],
@@ -764,20 +792,26 @@ const SECTIONS = {
   },
 
   books: {
-    icon:'📚', color:'#7B8FE8', sheet:'Books', parser:'goodreadsCsv',
-    accept:'.csv', fileHint:'goodreads_library_export.csv',
-    key:['Book Id'], altKey:['Title','Author'],
-    title:'Title', sub:'Author', score:'My Rating', scoreMax:5,
-    status:'Status', year:'Original Publication Year', added:'Date Added',
-    progress:{cur:'Page', total:'Number of Pages'},
-    imported:['Book Id','Title','Author','Additional Authors','ISBN','ISBN13','My Rating','Average Rating','Publisher','Binding','Number of Pages','Year Published','Original Publication Year','Date Read','Date Added','Bookshelves','Exclusive Shelf','Read Count','My Review'],
-    local:['Cover','Page','Status','Favorite','Notes'],
-    defaultCols:['Cover','Title','Author','Page','Number of Pages','My Rating','Status','Date Read'],
-    startFilters:{}, startSort:{by:'My Rating', dir:-1},
-    top:['Status','Page'],
+    icon:'📚', color:'#7B8FE8', sheet:'Books', parser:'booksCsv',
+    accept:'.csv', fileHint:'1000kitap_KULLANICI_YYYY-MM-DD.csv (ya da Goodreads dışa aktarımı)',
+    key:['Book Id'],
+    title:'Title', sub:'Author', score:'My Rating', scoreMax:10,
+    status:'Shelf', year:'First Published', added:'Date Read',
+    progress:{cur:'Page', total:'Pages'},
+    imported:['Book Id','Title','Author','Translator','Publisher','ISBN','Pages','First Published','Genres','Site Rating','My Rating','Shelf','Date Read','Reading Time','URL'],
+    local:['Cover','Page','Favorite','Notes'],
+    /* The export carries cover art; it fills a blank cell but never
+       replaces one you set yourself. */
+    fillOnImport:['Cover'],
+    defaultCols:['Cover','Title','Author','Pages','Page','My Rating','Shelf','Date Read'],
+    startFilters:{'Shelf':'Completed'}, startSort:{by:'My Rating', dir:-1},
+    top:['Shelf','Page'],
     charts:['scores','status'],
-    filters:[{f:'Status',t:'select'},{f:'Exclusive Shelf',t:'select'},{f:'Author',t:'select'},{f:'My Rating',t:'range'}],
-    sorts:['Title','Author','My Rating','Average Rating','Number of Pages','Date Read','Date Added','Original Publication Year']
+    filters:[
+      {f:'Shelf',t:'select'},{f:'Author',t:'select'},{f:'Genres',t:'multi'},
+      {f:'Publisher',t:'select'},{f:'My Rating',t:'range'},{f:'Pages',t:'range'}
+    ],
+    sorts:['Title','Author','My Rating','Site Rating','Pages','Date Read','First Published','Publisher']
   }
 };
 const SEC_IDS = Object.keys(SECTIONS);
@@ -786,12 +820,29 @@ for (const id of SEC_IDS){
   s.id = id;
   s.columns = ['_id', ...s.imported, ...s.local];   // sheet column order
   s.protect = s.local.slice();                       // never overwritten on import
+  s.fillOnImport = s.fillOnImport || [];             // ...unless the cell is still empty
 }
 
 /* Accounts shown on the home page. Usernames live in the Sheet's settings;
    these are the starting values, used until something is saved over them. */
 const PLATFORMS = ['PlayStation Network','Xbox','Nintendo','Steam','Epic Games','GOG',
                    'Origin','Uplay','MyAnimeList','IMDb','Goodreads','Backloggd'];
+/* Küçük renkli rozetler — marka logosu kullanmadan tanınır kalsın diye. */
+const PLATFORM_MARKS = {
+  'PlayStation Network':{t:'PS', c:'#2E6DE6'},
+  'Xbox':               {t:'XB', c:'#3FA037'},
+  'Nintendo':           {t:'NS', c:'#D63A2F'},
+  'Steam':              {t:'ST', c:'#4B6C8C'},
+  'Epic Games':         {t:'EG', c:'#5A5A5A'},
+  'GOG':                {t:'GG', c:'#8B45B0'},
+  'Origin':             {t:'OR', c:'#E8641A'},
+  'Uplay':              {t:'UP', c:'#1E8FD6'},
+  'MyAnimeList':        {t:'MA', c:'#2E51A2'},
+  'IMDb':               {t:'IM', c:'#D6B12A'},
+  'Goodreads':          {t:'GR', c:'#8A6440'},
+  'Backloggd':          {t:'BL', c:'#3E9C8F'}
+};
+
 const DEFAULT_PROFILES = {
   'PlayStation Network':'TintlerTR',
   'Xbox':'Tintler',
@@ -821,8 +872,8 @@ const I18N = {
     reset:'Reset',selectAll:'Select all',filters:'Filters',columns:'Columns',import:'Import',
     export:'Export',exportAll:'Export the whole library to Excel',
     addRecord:'Add record',searchPh:'Search titles…',
-    'auth.title':'Log in to edit','auth.hint':'The site is read-only for visitors. Enter your password to add, edit and import records.',
-    'auth.api':'Apps Script Web App URL','auth.pw':'Password',
+    'auth.title':'Log in to edit','auth.hint':'The site is read-only for visitors.',
+    'auth.pw':'Password',
     'auth.ok':'Logged in — editing is on','auth.bad':'Wrong password','auth.noapi':'Add your Apps Script URL first',
     'auth.out':'Logged out','auth.readonly':'Read-only mode',
     'cols.title':'Choose columns','cols.hint':'These columns appear in the list view and in the Excel export. Your choice is saved in this browser.',
@@ -854,8 +905,8 @@ const I18N = {
     'favOnly':'Favourites only','clear':'Clear filters','exported':'Excel file downloaded',
     'offline':'Working from this browser only — no Sheet connected',
     'loading':'Loading library…','loadFail':'Could not reach the Sheet. Showing the last copy stored in this browser.',
-    'sync':'Synced with Google Sheets',
-    'splash.connect':'Connecting to Google Drive…','splash.read':'Reading the library…',
+    'sync':'Sync complete',
+    'splash.connect':'Connecting to the database…','splash.read':'Reading the library…',
     'splash.ready':'Ready','splash.local':'Running on this browser'
   },
   tr:{
@@ -873,8 +924,8 @@ const I18N = {
     reset:'Sıfırla',selectAll:'Tümünü seç',filters:'Filtreler',columns:'Sütunlar',import:'İçe aktar',
     export:'Dışa aktar',exportAll:'Tüm kütüphaneyi Excel’e aktar',
     addRecord:'Kayıt ekle',searchPh:'Başlık ara…',
-    'auth.title':'Düzenlemek için giriş yap','auth.hint':'Site ziyaretçiler için salt okunur. Kayıt eklemek, düzenlemek ve içe aktarmak için şifreni gir.',
-    'auth.api':'Apps Script Web App adresi','auth.pw':'Şifre',
+    'auth.title':'Düzenlemek için giriş yap','auth.hint':'Site ziyaretçiler için salt okunur.',
+    'auth.pw':'Şifre',
     'auth.ok':'Giriş yapıldı — düzenleme açık','auth.bad':'Şifre hatalı','auth.noapi':'Önce Apps Script adresini gir',
     'auth.out':'Çıkış yapıldı','auth.readonly':'Salt okunur mod',
     'cols.title':'Sütunları seç','cols.hint':'Bu sütunlar liste görünümünde ve Excel çıktısında görünür. Seçimin bu tarayıcıda saklanır.',
@@ -906,8 +957,8 @@ const I18N = {
     'favOnly':'Sadece favoriler','clear':'Filtreleri temizle','exported':'Excel dosyası indirildi',
     'offline':'Yalnızca bu tarayıcıda çalışıyor — Sheet bağlı değil',
     'loading':'Kütüphane yükleniyor…','loadFail':'Sheet’e ulaşılamadı. Bu tarayıcıdaki son kopya gösteriliyor.',
-    'sync':'Google Sheets ile eşitlendi',
-    'splash.connect':'Google Drive’a bağlanılıyor…','splash.read':'Kütüphane okunuyor…',
+    'sync':'Eşitleme tamam',
+    'splash.connect':'Veritabanına bağlanılıyor…','splash.read':'Kütüphane okunuyor…',
     'splash.ready':'Hazır','splash.local':'Bu tarayıcıda çalışıyor'
   }
 };
@@ -1141,6 +1192,7 @@ const API = {
         const k = keyOf(inc), cur = map.get(k);
         if(cur){
           sec.imported.forEach(c=>{ if(inc[c]!==undefined) cur[c]=inc[c]; });
+          (sec.fillOnImport||[]).forEach(c=>{ if(!nz(cur[c]) && nz(inc[c])) cur[c]=inc[c]; });
           updated++;
         }else{
           const rec = {_id:uid()};
@@ -1211,15 +1263,40 @@ const PARSERS = {
       throw new Error('needs the columns "Const" and "Title"');
     return list.filter(r=>r.Const);
   },
-  goodreadsCsv(text){
+  /* Two shapes are accepted: the CSV the 1000Kitap script writes, and a
+     Goodreads library export, folded into the same columns. */
+  booksCsv(text){
     const {headers, list} = csvToObjects(text);
     if(!headers.includes('Title'))
       throw new Error('needs at least a "Title" column');
+
+    if(headers.includes('Shelf') && headers.includes('Book Id'))
+      return list.filter(r=>r.Title);                       // already the right shape
+
+    const SHELF = {'read':'Completed','currently-reading':'Reading','to-read':'Plan to read'};
     return list.filter(r=>r.Title).map(r=>{
-      const o = Object.assign({}, r);
-      o['Book Id'] = o['Book Id'] || o['ISBN13'] || o['ISBN'] || (o.Title+'|'+(o.Author||''));
-      ['ISBN','ISBN13'].forEach(k=>{ if(o[k]) o[k] = o[k].replace(/[="]/g,''); });
-      return o;
+      const isbn = String(r.ISBN13||r.ISBN||'').replace(/[="]/g,'');
+      const mine = numOf(r['My Rating']);
+      const avg  = numOf(r['Average Rating']);
+      return {
+        'Book Id': r['Book Id'] || isbn || (r.Title+'|'+(r.Author||'')),
+        'Title': r.Title,
+        'Author': r.Author || '',
+        'Translator': '',
+        'Publisher': r.Publisher || '',
+        'ISBN': isbn,
+        'Pages': r['Number of Pages'] || '',
+        'First Published': r['Original Publication Year'] || r['Year Published'] || '',
+        'Genres': r.Bookshelves || '',
+        /* Goodreads works out of five; everything here is out of ten. */
+        'Site Rating': avg!=null ? (avg*2).toFixed(1) : '',
+        'My Rating': mine ? String(mine*2) : '',
+        'Shelf': SHELF[String(r['Exclusive Shelf']||'').trim()] || '',
+        'Date Read': r['Date Read'] || r['Date Added'] || '',
+        'Reading Time': '',
+        'URL': r['Book Id'] ? 'https://www.goodreads.com/book/show/'+r['Book Id'] : '',
+        'Cover': ''
+      };
     });
   },
   malAnimeXml(text){
@@ -1310,7 +1387,7 @@ function renderHome(){
     const art = S.data[id].slice()
       .sort((a,b)=> compareCells(a[s.score], b[s.score], -1))
       .filter(r=> nz(r.Cover))
-      .slice(0,4)
+      .slice(0,8)
       .map(r=>`<img src="${esc(r.Cover)}" alt="" loading="lazy">`).join('');
     return `<button class="spine" data-go="${id}" style="--sp:${s.color};--sp-tint:${s.color}22">
       ${art?`<div class="spine-art">${art}</div>`:''}
@@ -1410,8 +1487,9 @@ function renderProfiles(){
   $('#profiles').innerHTML = PLATFORMS.map(pf=>{
     const v = S.settings[pf] || '';
     if(!S.auth && !v) return '';
+    const mark = PLATFORM_MARKS[pf] || {t:pf.slice(0,2).toUpperCase(), c:'#5A6472'};
     return `<div class="profile-row">
-      <span class="profile-name">${esc(pf)}</span>
+      <span class="profile-name"><i class="pf-mark" style="background:${mark.c}">${esc(mark.t)}</i>${esc(pf)}</span>
       ${S.auth
         ? `<input type="text" data-pf="${esc(pf)}" value="${esc(v)}" placeholder="${esc(t('home.username'))}">`
         : `<span class="profile-val mono">${esc(v)}</span>`}
@@ -1433,6 +1511,18 @@ function renderProfiles(){
 }
 
 /* ---------- 9. CARDS -------------------------------------------------- */
+/* Kartın altındaki küçük satır. Windows PC'de platform adı bir şey
+   anlatmıyor; oyunun nereden geldiğini yazmak daha kullanışlı. */
+function cardSub(secId, r){
+  const s = SECTIONS[secId];
+  if(secId==='games'){
+    if(String(r.Platform||'').trim()==='Windows PC')
+      return nz(r['Digital service']) ? r['Digital service'] : 'Windows PC';
+    return r.Platform || '';
+  }
+  return r[s.sub] || '';
+}
+
 function coverCard(secId, r, withTitle){
   const s = SECTIONS[secId];
   const title = r[s.title]||'—';
@@ -1460,7 +1550,7 @@ function coverCard(secId, r, withTitle){
       ${String(r.Favorite)==='true'||r.Favorite==='TRUE'||r.Favorite==='Yes'?`<span class="cover-fav">★</span>`:''}
       ${badge?`<span class="cover-badge">${esc(badge)}</span>`:''}
     </div>
-    ${withTitle?`<div class="card-title">${esc(title)}</div><div class="card-sub">${esc(r[s.sub]||'')}</div>${prog}`:''}
+    ${withTitle?`<div class="card-title">${esc(title)}</div><div class="card-sub">${esc(cardSub(secId, r))}</div>${prog}`:''}
   </div>`;
 }
 function bindCards(root){
@@ -1623,9 +1713,12 @@ function buildFilterBar(secId){
 let DT = {sec:null, rec:null, isNew:false};
 
 /* Fields lifted to the top of the record panel, in this order. */
-function topFields(secId){
+function topFields(secId, rec){
   const s = SECTIONS[secId], set = STATUS_SETS[secId];
   const out = [];
+  /* Bir filmin sezonu ve bölümü olmaz. */
+  if(secId==='screen' && /^(movie|tv movie|video)$/i.test(String((rec||{})['Title Type']||'').trim()))
+    return out;
   (s.top||[]).forEach(k=>{
     if(set && k===set.field){
       out.push({k, label:t('d.status'), type:'status'});
@@ -1657,6 +1750,7 @@ function openDetail(secId, rec, isNew){
   const r = DT.rec;
   $('#dtHead').textContent = isNew ? t('addRecord') : (r[s.title]||'—');
 
+  const myScore = numOf(r[s.score]);
   const cover = nz(r.Cover)
     ? `<img src="${esc(r.Cover)}" alt="">`
     : `<div class="cover-fallback">${esc(initials(r[s.title]))}</div>`;
@@ -1668,29 +1762,34 @@ function openDetail(secId, rec, isNew){
       <div class="mono muted" style="font-size:11px;margin-top:5px">${cur} / ${tot} · ${Math.round(cur/tot*100)}%</div></div>`;
   }
 
-  const tops = topFields(secId);
+  const tops = topFields(secId, r);
   const topHTML = tops.map(f=>{
     if(f.type==='status'){
       const set = STATUS_SETS[secId];
+      if(!S.auth) return `<div class="field"><label>${esc(f.label)}</label>
+        <div class="ro-value">${esc(r[f.k]||'—')}</div></div>`;
       return `<div class="field"><label>${esc(f.label)}</label>
-        <select data-k="${esc(f.k)}" id="dtStatus" ${S.auth?'':'disabled'}>
+        <select data-k="${esc(f.k)}" id="dtStatus">
           <option value="">—</option>
           ${set.options.map(o=>`<option ${String(r[f.k])===o?'selected':''}>${esc(o)}</option>`).join('')}
         </select></div>`;
     }
     if(f.type==='dependent'){
+      if(!S.auth) return `<div class="field"><label>${esc(f.label)}</label>
+        <div class="ro-value">${esc(r[f.k]||'—')}</div></div>`;
       return `<div class="field"><label>${esc(f.label)}</label>
-        <select data-k="${esc(f.k)}" id="dtDependent" ${S.auth?'':'disabled'}></select></div>`;
+        <select data-k="${esc(f.k)}" id="dtDependent"></select></div>`;
     }
+    if(!S.auth) return `<div class="field"><label>${esc(f.label)}</label>
+      <div class="ro-value mono">${esc(r[f.k]||'—')}</div></div>`;
     return `<div class="field"><label>${esc(f.label)}</label>
       <div class="stepper">
-        <button data-step="-1" data-step-k="${esc(f.k)}" ${S.auth?'':'disabled'}>−</button>
-        <input type="number" data-k="${esc(f.k)}" value="${esc(r[f.k]||'')}" ${S.auth?'':'disabled'}>
-        <button data-step="1" data-step-k="${esc(f.k)}" ${S.auth?'':'disabled'}>+</button>
+        <button data-step="-1" data-step-k="${esc(f.k)}">−</button>
+        <input type="number" data-k="${esc(f.k)}" value="${esc(r[f.k]||'')}">
+        <button data-step="1" data-step-k="${esc(f.k)}">+</button>
       </div></div>`;
   }).join('');
 
-  const fav = (String(r.Favorite)==='true'||r.Favorite==='TRUE'||r.Favorite==='Yes');
   const topKeys = tops.map(f=>f.k);
   const importedHTML = S.auth
     ? `<div class="form-grid">${s.imported.filter(c=> !topKeys.includes(c)).map(c=>
@@ -1700,9 +1799,22 @@ function openDetail(secId, rec, isNew){
     : `<dl class="kv">${s.imported.filter(c=> !topKeys.includes(c) && nz(r[c])).map(c=>
         `<dt>${esc(colLabel(secId,c))}</dt><dd>${esc(fmtCell(secId,c,r[c]))}</dd>`).join('')}</dl>`;
 
+  const progressBlock = tops.length
+    ? `<div class="sub-h">${esc(t('d.progressBlock'))}</div><div class="form-grid">${topHTML}</div>`
+    : '';
+
+  const trackBlock = S.auth
+    ? `<div class="sub-h">${esc(t('d.myTrack'))}</div>
+       <div class="form-grid">
+         <div class="field wide"><label>${esc(t('d.notes'))}</label>
+           <textarea data-k="Notes" rows="3">${esc(r.Notes||'')}</textarea></div>
+       </div>`
+    : (nz(r.Notes) ? `<div class="sub-h">${esc(t('d.notes'))}</div><p style="margin:0">${esc(r.Notes)}</p>` : '');
+
   $('#dtBody').innerHTML = `
     <div class="detail-top">
-      <div class="detail-cover"><div class="cover" style="background:${tintFor(r[s.title])}">${cover}</div>
+      <div class="detail-cover"><div class="cover" style="background:${tintFor(r[s.title])}">${cover}
+        ${myScore>0?`<span class="cover-score big">${esc(myScore)}</span>`:''}</div>
         ${S.auth?`
           <button class="btn btn-sm" style="width:100%;margin-top:8px" id="dtFetch">${esc(t('d.fetchCover'))}</button>
           <button class="btn btn-sm" style="width:100%;margin-top:6px" id="dtUpload">${esc(t('d.upload'))}</button>
@@ -1711,25 +1823,18 @@ function openDetail(secId, rec, isNew){
       </div>
       <div class="detail-info">
         <h3>${esc(r[s.title]||'—')}</h3>
-        <div class="mono muted" style="font-size:12px">${esc([r[s.sub], r[s.year]&&yearOf(r[s.year]), s.status&&r[s.status]].filter(Boolean).join(' · '))}</div>
+        <div class="mono muted" style="font-size:12px">${esc([cardSub(secId, r), r[s.year]&&yearOf(r[s.year]), s.status&&r[s.status]].filter(Boolean).join(' · '))}</div>
         ${progHTML}
         ${nz(r.URL)?`<a class="btn btn-sm" style="margin-top:12px" href="${esc(r.URL)}" target="_blank" rel="noopener">${esc(t('d.open'))} ↗</a>`:''}
       </div>
     </div>
 
-    ${tops.length?`<div class="sub-h">${esc(t('d.progressBlock'))}</div>
-    <div class="form-grid">${topHTML}</div>`:''}
-
-    <div class="sub-h">${esc(t('d.myTrack'))}</div>
-    <div class="form-grid">
-      <div class="field wide"><label>${esc(t('d.notes'))}</label>
-        <textarea data-k="Notes" rows="3" ${S.auth?'':'disabled'}>${esc(r.Notes||'')}</textarea></div>
-      <div class="field"><label>${esc(t('d.fav'))}</label>
-        <label class="chip" style="cursor:pointer;width:max-content"><input type="checkbox" data-k="Favorite" ${fav?'checked':''} ${S.auth?'':'disabled'} style="accent-color:var(--brass)"> ★</label></div>
-    </div>
+    ${S.auth ? progressBlock + trackBlock : ''}
 
     <div class="sub-h">${esc(t('d.details'))}</div>
-    ${importedHTML}`;
+    ${importedHTML}
+
+    ${S.auth ? '' : progressBlock + trackBlock}`;
 
   $('#dtFoot').innerHTML = S.auth
     ? `${DT.isNew?'':`<button class="btn btn-danger" id="dtDel">${esc(t('delete'))}</button>`}
@@ -1754,7 +1859,7 @@ function openDetail(secId, rec, isNew){
       depSel.innerHTML = opts.length
         ? `<option value="">—</option>` + opts.map(o=>`<option ${cur===o?'selected':''}>${esc(o)}</option>`).join('')
         : `<option value="">${esc(t('d.pickStatus'))}</option>`;
-      depSel.disabled = !S.auth || !opts.length;
+      depSel.disabled = !opts.length;
     };
     paint();
     if(stSel) stSel.onchange = paint;
@@ -1853,7 +1958,8 @@ async function fetchCover(){
          Errors surface instead of being swallowed. */
       const res = await API.post('cover', {
         section: sec, key: coverLookupKey(sec, r), url: found,
-        igdbId: r['IGDB ID'] || '', name: r['Game name'] || r.Title || '', imdbId: r['Const'] || ''
+        igdbId: r['IGDB ID'] || '', name: r['Game name'] || r.Title || '',
+        imdbId: r['Const'] || '', isbn: r['ISBN'] || '', author: r['Author'] || ''
       });
       if(!res.url) throw new Error(t('d.noCover'));
       setCoverInPanel(res.url);
@@ -2000,7 +2106,8 @@ async function runImport(){
       msg.textContent = `${t('import.writing')} ${Math.min(i+CHUNK,total)} / ${total}`;
       const res = await API.post('import', {
         section:secId, sheet:s.sheet, columns:s.columns,
-        key:s.key, protect:s.protect, importable:s.imported, rows:slice
+        key:s.key, protect:s.protect, importable:s.imported,
+        fillIfEmpty:s.fillOnImport, rows:slice
       });
       added += res.added||0; updated += res.updated||0;
       bar.style.width = Math.round(Math.min(i+CHUNK,total)/total*100)+'%';
@@ -2024,8 +2131,7 @@ function paintAuth(){
   $('#btnAdd').classList.toggle('hidden', !S.auth);
 }
 async function doLogin(){
-  const api = $('#inApi').value.trim(), pw = $('#inPw').value;
-  if(api){ S.api = api.replace(/\/+$/,''); LS.set('api', S.api); }
+  const pw = $('#inPw').value;
   if(!S.api){                       // no Sheet yet: unlock this browser only
     S.auth = true; S.token = 'local'; LS.set('token','local');
     close$('#ovAuth'); paintAuth(); toast(t('auth.ok'),'ok');
@@ -2047,6 +2153,31 @@ function doLogout(){
 
 /* ---------- 17. STATISTICS -------------------------------------------- */
 const PALETTE = ['#E3B23C','#B27BD4','#57BFB3','#E4795B','#7B8FE8','#63C08C','#E05C5C','#C9A227','#8E9BB3','#D46FA8'];
+
+/* Durum renkleri anlamına göre seçildi ve bölümler arasında aynı dili
+   konuşuyor: gri = henüz yok, kırmızı = başlanmadı, sarı = devam ediyor,
+   koyu mavi = sürekli, yeşil = bitirildi, açık mavi = tamamen bitirildi,
+   açık gri = bırakıldı. */
+const STATUS_COLORS = {
+  'no status':'#4A5160',      // henüz işaretlenmemiş
+  'not started':'#D6453C',    // alındı, başlanmadı
+  'unfinished':'#E3B23C',     // devam ediyor
+  'watching':'#E3B23C', 'reading':'#E3B23C',
+  'on-hold':'#B27BD4', 'on hold':'#B27BD4',   // beklemede
+  'continuous':'#1F4E9C',     // bitmeyen oyun
+  'beaten':'#43A047',         // bitirildi
+  'completed':'#43A047',      // bitirildi (oyunda %100 için aşağıda değişiyor)
+  'dropped':'#A8AEB8',        // bırakıldı
+  'plan to watch':'#4A5160', 'plan to read':'#4A5160'
+};
+/* Oyunlarda "Beaten" ile "Completed" ayrı şeyler: biri bitirmek, öbürü
+   her şeyi toplamak. Yalnızca orada Completed açık maviye kayıyor. */
+const STATUS_COLORS_GAMES = {'completed':'#5AB4E8'};
+function statusColor(v, i, secId){
+  const k = String(v||'').trim().toLowerCase();
+  if(secId==='games' && STATUS_COLORS_GAMES[k]) return STATUS_COLORS_GAMES[k];
+  return STATUS_COLORS[k] || PALETTE[i % PALETTE.length];
+}
 function chartDefaults(){
   Chart.defaults.color = '#9199A6';
   Chart.defaults.font.family = "'JetBrains Mono', monospace";
@@ -2146,7 +2277,9 @@ function renderStats(){
     const st = topN(countBy(items, x=> String(x.r[x.s.statStatus||x.s.status]||'').trim()), 8);
     mk('c3', {type:'doughnut', data:{
       labels: st.map(a=>a[0]),
-      datasets:[{data:st.map(a=>a[1]), backgroundColor:PALETTE, borderColor:'#151920', borderWidth:2}]
+      datasets:[{data:st.map(a=>a[1]),
+        backgroundColor:st.map((a,i)=> statusColor(a[0], i, scope)),
+        borderColor:'#151920', borderWidth:2}]
     }, options:{plugins:{legend:{position:'right'}}, cutout:'58%', maintainAspectRatio:false}});
   }
   if(want.includes('year')){
@@ -2180,8 +2313,7 @@ $('#langEn').onclick = ()=>setLang('en');
 $('#langTr').onclick = ()=>setLang('tr');
 $('#authBtn').onclick = ()=>{
   if(S.auth) return doLogout();
-  $('#inApi').value = S.api || '';
-  open$('#ovAuth'); setTimeout(()=>$( S.api?'#inPw':'#inApi').focus(), 60);
+  open$('#ovAuth'); setTimeout(()=>$('#inPw').focus(), 60);
 };
 $('#btnDoLogin').onclick = doLogin;
 $('#inPw').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
