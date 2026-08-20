@@ -721,7 +721,11 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyyJn4CXR20hLealaw70ZcMiAYG_44_dJLg2RkJq5O2QF_Re-6-sNmQpjCge-6qvmP3Hg/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxDPgVdQL03OcMLWicRYTPH9fy_IjAQHXVV1ya3Ar73OFrIF8iFixJckWOcKRSm8ZV0/exec';
+
+/* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
+   dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
+const NEEDS_SERVER = '2026-08-20-freeze';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -943,6 +947,8 @@ const I18N = {
     'import.run':'Import now','import.reading':'Reading file…','import.writing':'Writing to Google Sheets…',
     'import.done':'Import finished','import.needLogin':'Log in first to import',
     'import.badFile':'That file does not match this section. Expected:',
+    'imp.oldServer':'The site is talking to an out-of-date Apps Script deployment.',
+    'imp.oldServerFix':'Apps Script ▸ Deploy ▸ Manage deployments ▸ edit the deployment this URL belongs to ▸ Version: New version ▸ Deploy. Creating a NEW deployment makes a different URL and leaves this one on the old code.',
     'stats.title':'Statistics','stats.all':'Whole library','stats.of':'records analysed',
     'k.total':'Records','k.rated':'Rated','k.avg':'Avg. score','k.hours':'Hours played','k.eps':'Episodes',
     'k.chapters':'Chapters read','k.pages':'Pages read','k.runtime':'Watch time (h)','k.completed':'Completed','k.covers':'Covers',
@@ -997,6 +1003,8 @@ const I18N = {
     'import.run':'İçe aktar','import.reading':'Dosya okunuyor…','import.writing':'Google Sheets’e yazılıyor…',
     'import.done':'İçe aktarma bitti','import.needLogin':'İçe aktarmak için önce giriş yap',
     'import.badFile':'Bu dosya bu bölüme uymuyor. Beklenen:',
+    'imp.oldServer':'Site eski bir Apps Script dağıtımıyla konuşuyor.',
+    'imp.oldServerFix':'Apps Script ▸ Dağıt ▸ Dağıtımları yönet ▸ bu adrese ait dağıtımın ✏ simgesi ▸ Sürüm: Yeni sürüm ▸ Dağıt. “Yeni dağıtım” demek başka bir adres üretir ve bu adres eski kodda kalır.',
     'stats.title':'İstatistikler','stats.all':'Tüm kütüphane','stats.of':'kayıt incelendi',
     'k.total':'Kayıt','k.rated':'Puanlanan','k.avg':'Ort. puan','k.hours':'Oynanan saat','k.eps':'Bölüm',
     'k.chapters':'Okunan bölüm','k.pages':'Okunan sayfa','k.runtime':'İzleme süresi (s)','k.completed':'Tamamlanan','k.covers':'Kapak',
@@ -2143,7 +2151,17 @@ function openImport(){
   const secId = S.sec, s = SECTIONS[secId];
   IMP = {rows:[], plan:null};
   $('#impHead').textContent = t('import.title') + ' · ' + t('sec.'+secId);
-  $('#impBody').innerHTML = `
+  const surumUyari = !API.connected ? ''
+    : (S.serverVersion === NEEDS_SERVER
+        ? `<p class="mono muted" style="font-size:11px;margin:0 0 12px">server: ${esc(S.serverVersion)} ✔</p>`
+        : `<p class="section-hint" style="border-left-color:var(--red);color:var(--paper)">
+             <b>${esc(t('imp.oldServer'))}</b><br>
+             <span class="mono" style="font-size:11.5px">
+               beklenen: ${esc(NEEDS_SERVER)}<br>
+               gelen: ${esc(S.serverVersion || '(sürüm bildirmiyor)')}
+             </span><br>${esc(t('imp.oldServerFix'))}</p>`);
+
+  $('#impBody').innerHTML = surumUyari + `
     <div class="drop" id="dropZone">
       <div style="font-size:30px">📄</div>
       <h4>${esc(t('import.drop'))}</h4>
