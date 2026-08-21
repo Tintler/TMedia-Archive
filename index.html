@@ -581,13 +581,9 @@ tbody tr:last-child td{border-bottom:none}
   border-bottom:1px solid var(--edge-soft);
 }
 .author-list li:last-child{border-bottom:none}
-.author-list img,.au-blank{
+.author-list img,.author-list .au-blank{
   width:42px;height:58px;border-radius:6px;object-fit:cover;flex-shrink:0;
-  background:var(--panel-2);
-}
-.au-blank{
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--display);font-weight:800;font-size:14px;color:var(--muted-2);
+  background:var(--panel-2);display:block;
 }
 .au-text{display:flex;flex-direction:column;gap:3px;min-width:0}
 .au-text b{
@@ -835,14 +831,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyqzutmqoHdtW2ogC-7mpEWvq_0_2JQxykzzU1R1BlBLN6FFcyyek3gP7FqDQp1KNqQ-g/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxLjk7SarRMQcltu4Eg3IvOFo00fC8exJp1oUnCCIbXZVCMMRv6QAouPixhzYOKAR_SbQ/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-20-v3';
+const NEEDS_SERVER = '2026-08-21-v4';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-20-v3';
+const APP_VERSION = '2026-08-21-v4';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1087,6 +1083,8 @@ const I18N = {
     'c.franchiseNone':'Run “Game genres, themes and series” from Tools to fill this in.',
     'c.titles':'titles',
     'c.authors':'Most read authors',
+    'c.authorPhotos':'Run “Author photos” from Tools to put faces here.',
+    'job.fillAuthorPhotos':'Author photos — Open Library',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
     'd.notes':'Notes','d.fav':'Favourite','d.status':'Status','d.edit':'Edit','d.saved':'Saved',
@@ -1168,6 +1166,8 @@ const I18N = {
     'c.franchiseNone':'Araçlar’dan “Oyun türleri, temaları ve serileri”ni çalıştırınca dolar.',
     'c.titles':'oyun',
     'c.authors':'En çok okunan yazarlar',
+    'c.authorPhotos':'Araçlar’dan “Yazar fotoğrafları”nı çalıştırınca yüzler gelir.',
+    'job.fillAuthorPhotos':'Yazar fotoğrafları — Open Library',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
     'd.notes':'Notlar','d.fav':'Favori','d.status':'Durum','d.edit':'Düzenle','d.saved':'Kaydedildi',
@@ -1237,6 +1237,7 @@ const S = {
   filters: {},                    // sec -> {field:value}
   search: {},
   settings: {},                   // platform usernames
+  authors: {},                    // yazar adı -> portre adresi
   serverVersion: '',              // hangi Apps Script dağıtımına bağlıyız
   api: LS.get('api','') || DEFAULT_API,
   token: LS.get('token',''),
@@ -1354,6 +1355,7 @@ const API = {
       }) : [];
     });
     S.settings = withDefaultProfiles(json.settings);
+    S.authors = json.authors || {};
     S.serverVersion = json.version || '';
     this.cache();
     return true;
@@ -1367,7 +1369,7 @@ const API = {
 
   cache(){
     try{
-      const small = {settings:S.settings};
+      const small = {settings:S.settings, authors:S.authors};
       SEC_IDS.forEach(id=> small[id] = S.data[id]);
       localStorage.setItem('backlog.cache', JSON.stringify(small));
     }catch(e){ /* over quota — fine, we just re-fetch next time */ }
@@ -1378,6 +1380,7 @@ const API = {
       if(!c) return false;
       SEC_IDS.forEach(id=> S.data[id] = c[id]||[]);
       S.settings = withDefaultProfiles(c.settings);
+      S.authors = c.authors || {};
       return true;
     }catch(e){ return false; }
   },
@@ -2435,7 +2438,7 @@ async function uploadCover(file){
 
 /* ---------- 12c. BAKIM PANELİ ---------------------------------------- */
 const JOBS = ['fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
-              'fillBookCovers','fillGameGenres','rehostCovers','backfillIds',
+              'fillBookCovers','fillGameGenres','fillAuthorPhotos','rehostCovers','backfillIds',
               'diagnose','freezeReport'];
 let JOB_BUSY = false;
 
@@ -2776,26 +2779,31 @@ function stackedByStatus(id, secId, field, split, kacTane){
 }
 
 /* En çok okuduğun yazarlar: bitirdiğin kitap sayısına göre ilk beş. */
+/* Fotoğrafı olmayan yazar için sade bir yer tutucu: kitap okuyan silüet. */
+const AUTHOR_PLACEHOLDER = `<svg class="au-blank" viewBox="0 0 84 116" aria-hidden="true">
+  <rect width="84" height="116" rx="6" fill="#20262F"/>
+  <g fill="#39424F">
+    <circle cx="42" cy="40" r="16"/>
+    <path d="M18 74c0-11 11-18 24-18s24 7 24 18z"/>
+    <path d="M8 78h30c2 0 4 1 4 3v26c0-2-2-3-4-3H8z"/>
+    <path d="M76 78H46c-2 0-4 1-4 3v26c0-2 2-3 4-3h30z"/>
+  </g>
+</svg>`;
+
 function authorPanel(){
   const bitmis = S.data.books.filter(r=> /complet/i.test(String(r.Shelf||'')));
   const kaynak = bitmis.length ? bitmis : S.data.books;
   const top = topN(countBy(kaynak, r=> String(r.Author||'').trim()), 5);
   if(!top.length) return '';
 
-  /* Yazar fotoğrafımız yok; o yazarın en yüksek puanlı kitabının kapağını
-     kullanmak hem tanıdık hem de sayfanın diline uyuyor. */
-  const kapakBul = ad => {
-    const kitap = kaynak
-      .filter(r=> String(r.Author||'').trim()===ad && nz(r.Cover))
-      .sort((a,b)=> compareCells(a['My Rating'], b['My Rating'], -1))[0];
-    return kitap ? kitap.Cover : '';
-  };
-
   return `<div class="chart-card"><h4>${esc(t('c.authors'))}</h4>
     <ol class="author-list">${top.map(([ad,n])=>{
-      const k = kapakBul(ad);
-      const th = k ? `<img src="${esc(k)}" alt="" loading="lazy">`
-                   : `<span class="au-blank">${esc(initials(ad))}</span>`;
+      const foto = S.authors[ad] || '';
+      const th = foto
+        ? `<img src="${esc(foto)}" alt="" loading="lazy"
+             onerror="this.replaceWith(this.nextElementSibling.content.cloneNode(true))">
+           <template>${AUTHOR_PLACEHOLDER}</template>`
+        : AUTHOR_PLACEHOLDER;
       return `<li>
         ${th}
         <span class="au-text">
@@ -2804,6 +2812,8 @@ function authorPanel(){
         </span>
       </li>`;
     }).join('')}</ol>
+    ${Object.keys(S.authors).length ? '' :
+      `<p class="mono muted" style="font-size:10.5px;margin:12px 0 0">${esc(t('c.authorPhotos'))}</p>`}
   </div>`;
 }
 
