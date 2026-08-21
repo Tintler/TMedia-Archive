@@ -966,14 +966,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbx5d_a9c65OUxLSStlyLbEg6PDegyopq6tgJpJJm-DhoT2CdXhIimYJF4TiYp1viSq52A/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwJX4I7yIT23_UTE618cWzEPKNBmEqgOomi5229vIGZ2WKZQqKqT79UkLt9Cn2PRpHXIw/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v14';
+const NEEDS_SERVER = '2026-08-21-v16';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v14';
+const APP_VERSION = '2026-08-21-v16';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1232,7 +1232,7 @@ const I18N = {
     'xiv.profile':'Character profile','xiv.classes':'Classes','xiv.attributes':'Attributes',
     'xiv.race':'Race','xiv.guardian':'Guardian','xiv.town':'City-state',
     'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
-    'xiv.gear':'Equipment','xiv.pieces':'pieces',
+    'xiv.gear':'Equipment','xiv.pieces':'pieces','xiv.pages':'p.',
     'xiv.card':'Final Fantasy XIV profile','xiv.level':'Level',
     'xiv.g.attributes':'Attributes','xiv.g.offense':'Offensive properties',
     'xiv.g.defense':'Defensive properties','xiv.g.physical':'Physical properties',
@@ -1337,7 +1337,7 @@ const I18N = {
     'xiv.profile':'Karakter bilgileri','xiv.classes':'Sınıflar','xiv.attributes':'Nitelikler',
     'xiv.race':'Irk','xiv.guardian':'Koruyucu','xiv.town':'Şehir',
     'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
-    'xiv.gear':'Ekipman','xiv.pieces':'parça',
+    'xiv.gear':'Ekipman','xiv.pieces':'parça','xiv.pages':'s.',
     'xiv.card':'Final Fantasy XIV profili','xiv.level':'Seviye',
     'xiv.g.attributes':'Nitelikler','xiv.g.offense':'Saldırı',
     'xiv.g.defense':'Savunma','xiv.g.physical':'Fiziksel',
@@ -1994,12 +1994,19 @@ function feedBits(it){
     const birim = id==='manga' ? t('d.chapter') : t('d.episode');
     return [`${birim} ${it.hist.n}`];
   }
-  const st = r.Status || r.Completion;
-  if(nz(st) && st!=='No Status') bits.push(st);
+  /* Oyunlarda durum ve tamamlanma ayrı bilgiler; ikisini de gösteriyoruz. */
+  if(id==='games'){
+    if(nz(r.Status) && r.Status!=='No Status') bits.push(r.Status);
+    if(nz(r.Completion) && r.Completion!=='No Status') bits.push(r.Completion);
+  }else{
+    const st = r.Status || r.Shelf || r.Completion;
+    if(nz(st) && st!=='No Status') bits.push(st);
+  }
   if(id==='anime' && numOf(r['Watched Episodes'])>0)
     bits.push(r['Watched Episodes'] + (numOf(r['Total Episodes'])>0 ? '/'+r['Total Episodes'] : '') + ' ep');
   if(id==='manga' && numOf(r['Read Chapters'])>0) bits.push(r['Read Chapters']+' ch');
   if(id==='games' && numOf(r.Playtime)>0) bits.push(Math.round(numOf(r.Playtime)/60)+' h');
+  if(id==='books' && numOf(r.Pages)>0) bits.push(r.Pages+' '+t('xiv.pages'));
   if(id==='screen' && nz(r.Season)) bits.push('S'+r.Season+(nz(r.Episode)?'·E'+r.Episode:''));
   return bits;
 }
@@ -2147,7 +2154,7 @@ function renderFfxivPage(){
 
         ${(k.jobs&&k.jobs.length)?`<div class="sub-h">${esc(t('xiv.classes'))}</div>
           <div class="xiv-jobs">${k.jobs.map(j=>`
-            <div class="xiv-job ${j.level>=100?'max':''} ${j.level?'':'off'}" title="${esc(j.name)}">
+            <div class="xiv-job ${j.level>=100?'max':''} ${j.level?'':'off'}" title="${esc(j.tooltip||j.name)}">
               ${gorsel(j.icon,'xiv-jobico') || `<b>${esc((j.name||'?').slice(0,3))}</b>`}
               <small>${j.level||'—'}</small>
             </div>`).join('')}</div>`:''}
