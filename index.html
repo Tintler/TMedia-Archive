@@ -834,14 +834,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbw0m7U6rVg8XmizcNRCTk4rxIDpHmXLqxgseQhaWbRI17FA9mOA5gHa9KjzXBmtvrSpGA/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbywmVr2axG6c9il87viTcROWzk9TDAJHHNx65xAc7x7rtgPkajV11d6JGkVzfuLiM5JjQ/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v7';
+const NEEDS_SERVER = '2026-08-21-v8';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v7';
+const APP_VERSION = '2026-08-21-v8';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1067,6 +1067,9 @@ const I18N = {
     'auth.pw':'Password',
     'auth.ok':'Logged in — editing is on','auth.bad':'Wrong password','auth.noapi':'Add your Apps Script URL first',
     'auth.out':'Logged out','auth.readonly':'Read-only mode',
+    'err.session':'Your session ended — log in again.',
+    'err.http':'the Apps Script deployment did not answer. Deploy a new version of the deployment this URL belongs to.',
+    'err.badReply':'The server sent something that is not an answer. Deploy a new version and try again.',
     'cols.title':'Choose columns','cols.hint':'These columns appear in the list view and in the Excel export. Your choice is saved in this browser.',
     'import.title':'Import','import.drop':'Drop your file here or click to browse',
     'import.expect':'Expected file','import.new':'New','import.upd':'Updated','import.same':'Unchanged',
@@ -1154,6 +1157,9 @@ const I18N = {
     'auth.pw':'Şifre',
     'auth.ok':'Giriş yapıldı — düzenleme açık','auth.bad':'Şifre hatalı','auth.noapi':'Önce Apps Script adresini gir',
     'auth.out':'Çıkış yapıldı','auth.readonly':'Salt okunur mod',
+    'err.session':'Oturumun düştü — yeniden giriş yap.',
+    'err.http':'Apps Script dağıtımı yanıt vermedi. Bu adrese ait dağıtıma yeni sürüm dağıt.',
+    'err.badReply':'Sunucudan yanıt yerine başka bir şey geldi. Yeni sürüm dağıtıp tekrar dene.',
     'cols.title':'Sütunları seç','cols.hint':'Bu sütunlar liste görünümünde ve Excel çıktısında görünür. Seçimin bu tarayıcıda saklanır.',
     'import.title':'İçe aktar','import.drop':'Dosyanı buraya bırak ya da tıkla',
     'import.expect':'Beklenen dosya','import.new':'Yeni','import.upd':'Güncellenen','import.same':'Değişmeyen',
@@ -1425,8 +1431,21 @@ const API = {
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body
     });
-    const json = await r.json();
-    if(!json.ok) throw new Error(json.error||'request failed');
+    if(!r.ok) throw new Error(`HTTP ${r.status} — ${t('err.http')}`);
+
+    let json;
+    try{ json = await r.json(); }
+    catch(e){ throw new Error(t('err.badReply')); }
+
+    if(!json.ok){
+      /* Oturum düştüyse sessizce kalmasın: kullanıcıyı çıkışa al. */
+      if(json.error === 'SESSION_EXPIRED'){
+        S.auth = false; S.token = ''; LS.del('token');
+        paintAuth();
+        throw new Error(t('err.session'));
+      }
+      throw new Error(json.error||'request failed');
+    }
     return json;
   },
 
