@@ -966,14 +966,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwTFbv-08pIMp2mGmfcNlcPSV_f3k9E5CSbtN6pb-mZsLLaFB8x3PZj-32rModzteaZeA/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbzqBaspjiL7uzTVE_TWutsn5CsuQgemNpV6tI5h7n4ZbR3oDLpwr0BvB_QajGG_wc-ydA/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v17';
+const NEEDS_SERVER = '2026-08-21-v18';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v17';
+const APP_VERSION = '2026-08-21-v18';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1970,11 +1970,52 @@ function nowFor(secId){
     ? iso.replace(/\.\d+Z$/, '.000Z')
     : iso.slice(0,10);
 }
-/* Elle eklenen kayıt akışta görünsün diye tarih alanını doldurur. */
-function stampNewRecord(secId, rec){
-  const alan = (FEED_DATES[secId]||[])[0];
-  if(alan && !nz(rec[alan])) rec[alan] = nowFor(secId);
-  if(secId==='games' && !nz(rec['Date added'])) rec['Date added'] = nowFor(secId);
+/* Kaydetme sırasında akış tarihini ne zaman tazeleyeceğimizi belirler.
+   Kural dar tutuldu: rastgele bir alanı düzeltmek kaydı akışın başına
+   taşımaz. Yalnızca aşağıdaki durumlar tarih yazar.
+
+     yeni kayıt   — her bölümde ilgili tarih alanı doldurulur
+     oyun         — Status ya da Completion değiştiğinde "Last updated"
+     film/dizi    — yalnızca ilk eklendiğinde "Modified"
+     anime/manga  — Status değiştiğinde "Finish Date"
+     kitap        — Shelf ilk kez Completed olduğunda "Date Read"
+
+   İçe aktarma bu alanları kendi kurallarıyla yönetmeye devam eder. */
+const EDIT_STAMP = {
+  games: {izle:['Status','Completion'], alan:'Last updated'},
+  anime: {izle:['Status'],              alan:'Finish Date'},
+  manga: {izle:['Status'],              alan:'Finish Date'},
+  books: {izle:['Shelf'],               alan:'Date Read',
+          /* Yalnızca Completed'a geçişte ve tarih boşsa: sonradan rafı
+             değiştirmek okuma tarihini silip yenilemesin. */
+          kosul: v=> /complet/i.test(String(v||'')),
+          sadeceBossa: true}
+};
+
+function stampOnSave(secId, rec, onceki, yeniMi){
+  const bugun = nowFor(secId);
+
+  if(yeniMi){
+    const alan = (FEED_DATES[secId]||[])[0];
+    if(alan && !nz(rec[alan])) rec[alan] = bugun;
+    if(secId==='games' && !nz(rec['Date added'])) rec['Date added'] = bugun;
+    if(secId==='screen' && !nz(rec['Created'])) rec['Created'] = bugun;
+    return null;
+  }
+
+  const kural = EDIT_STAMP[secId];
+  if(!kural) return null;                       // film/dizi: düzenlemede tarih değişmez
+
+  const eski = onceki || {};
+  const degisen = kural.izle.filter(k=>
+    String(eski[k]==null?'':eski[k]).trim() !== String(rec[k]==null?'':rec[k]).trim());
+  if(!degisen.length) return null;
+
+  if(kural.kosul && !degisen.some(k=> kural.kosul(rec[k]))) return null;
+  if(kural.sadeceBossa && nz(eski[kural.alan])) return null;
+
+  rec[kural.alan] = bugun;
+  return {alan:kural.alan, degisen};
 }
 
 function feedItems(){
@@ -2525,7 +2566,8 @@ function dependentOptions(secId, statusValue){
 
 function openDetail(secId, rec, isNew){
   const s = SECTIONS[secId];
-  DT = {sec:secId, rec:Object.assign({}, rec), isNew:!!isNew};
+  /* orig: düzenlemeden önceki hali. Neyin değiştiğini buradan anlıyoruz. */
+  DT = {sec:secId, rec:Object.assign({}, rec), orig:Object.assign({}, rec), isNew:!!isNew};
   const r = DT.rec;
   $('#dtHead').textContent = isNew ? t('addRecord') : (r[s.title]||'—');
 
@@ -2696,7 +2738,7 @@ async function saveDetail(){
   const btn = $('#dtSave'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try{
     const rec = collectDetail();
-    if(DT.isNew) stampNewRecord(DT.sec, rec);
+    stampOnSave(DT.sec, rec, DT.orig, DT.isNew);
     const res = await API.post('save', {section:DT.sec, record:rec});
     const saved = res.record || rec;
     const arr = S.data[DT.sec];
