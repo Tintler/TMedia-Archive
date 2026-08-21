@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>The Backlog — Personal Media Archive</title>
+<title>The Backlog</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E3B23C'/%3E%3Cg fill='%230E1116'%3E%3Crect x='8' y='7' width='3.4' height='18' rx='1.2'/%3E%3Crect x='14.3' y='7' width='3.4' height='18' rx='1.2'/%3E%3Crect x='20.6' y='7' width='3.4' height='18' rx='1.2'/%3E%3C/g%3E%3C/svg%3E">
 <meta name="description" content="A personal archive of games, anime, manga, film, television and books.">
 <!-- Bu dosya tek başına bütün siteyi taşıyor ve sık değişiyor. Tarayıcının
      eski bir kopyayı saklaması, eski bir Apps Script adresine bağlanmak
@@ -80,9 +81,13 @@ button{cursor:pointer;background:none;border:none}
   backdrop-filter:blur(14px);
   border-bottom:1px solid var(--edge-soft);
 }
-.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand{
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+  padding:4px 6px;margin-left:-6px;border-radius:var(--r-sm);transition:.15s;
+}
+.brand:hover{background:var(--panel)}
 .brand-mark{
-  width:26px;height:26px;border-radius:5px;flex-shrink:0;
+  display:block;width:26px;height:26px;border-radius:5px;flex-shrink:0;
   background:linear-gradient(150deg,var(--brass),var(--brass-deep));
   position:relative;
 }
@@ -142,7 +147,8 @@ main{position:relative;z-index:1;min-height:calc(100vh - var(--topbar-h))}
 
 /* the shelf */
 .shelf{
-  display:flex;gap:8px;height:clamp(300px,46vh,420px);margin:34px 0 0;
+  display:flex;gap:8px;height:clamp(300px,46vh,420px);
+  margin:clamp(22px,4vw,38px) 0 0;
 }
 .spine{
   position:relative;flex:1 1 0;min-width:0;border-radius:var(--r);
@@ -641,7 +647,7 @@ tbody tr:last-child td{border-bottom:none}
   border:1px solid color-mix(in srgb, var(--pfc) 45%, transparent);
   font-style:normal;
 }
-.pf-mark img{width:15px;height:15px;display:block}
+.pf-mark img,.pf-mark svg{width:15px;height:15px;display:block}
 .pf-mark b{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--pfc);letter-spacing:.02em}
 .profile-row{padding:7px 0}
 .profile-name{display:flex;align-items:center;min-width:0}
@@ -675,10 +681,10 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 
 <header class="topbar">
-  <div class="brand">
-    <div class="brand-mark"></div>
-    <div class="brand-name">THE BACKLOG</div>
-  </div>
+  <button class="brand" id="brandHome" title="The Backlog">
+    <span class="brand-mark"></span>
+    <span class="brand-name">THE BACKLOG</span>
+  </button>
   <nav class="nav" id="nav"></nav>
   <div class="topbar-right">
     <div class="lang">
@@ -695,9 +701,6 @@ tbody tr:last-child td{border-bottom:none}
   <!-- ========== HOME ========== -->
   <section class="page on" id="page-home">
     <div class="wrap">
-      <div class="home-head">
-        <div class="eyebrow" data-i18n="home.eyebrow">Tintler's media archive</div>
-      </div>
       <div class="shelf" id="shelf"></div>
       <div class="home-strip" id="homeStrip"></div>
       <div class="home-cols">
@@ -831,14 +834,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxLjk7SarRMQcltu4Eg3IvOFo00fC8exJp1oUnCCIbXZVCMMRv6QAouPixhzYOKAR_SbQ/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycby8hbL-a9BfMw1S8g3tIfsGjUkxyfSQC7mk1C6Nur4Umn6SjwDH5BmXx-XS-ndqEjnE/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v4';
+const NEEDS_SERVER = '2026-08-21-v5';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v4';
+const APP_VERSION = '2026-08-21-v5';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1017,14 +1020,14 @@ const PLATFORM_MARKS = {
   'Goodreads':          {t:'GR', c:'#C09A72', icon:'goodreads'},
   'Backloggd':          {t:'BL', c:'#4FBFAE', icon:''}
 };
+/* Simgeler bir kez Sheet'e indiriliyor ve oradan gömülüyor; dışarıya
+   istek gitmiyor. Henüz indirilmemişse harf rozeti gösterilir. */
 function platformMark(pf){
   const m = PLATFORM_MARKS[pf] || {t:pf.slice(0,2).toUpperCase(), c:'#8A94A6', icon:''};
-  const harf = esc(m.t);
-  const inner = m.icon
-    ? `<img src="https://cdn.simpleicons.org/${m.icon}/${m.c.replace('#','')}" alt=""
-         onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.t}))"
-         data-t="${harf}">`
-    : `<b>${harf}</b>`;
+  const svg = S.icons[pf];
+  const inner = (svg && svg.indexOf('<svg')===0)
+    ? svg
+    : `<b>${esc(m.t)}</b>`;
   return `<i class="pf-mark" style="--pfc:${m.c}">${inner}</i>`;
 }
 
@@ -1085,6 +1088,7 @@ const I18N = {
     'c.authors':'Most read authors',
     'c.authorPhotos':'Run “Author photos” from Tools to put faces here.',
     'job.fillAuthorPhotos':'Author photos — Open Library',
+    'job.fillPlatformIcons':'Platform icons — store them in the Sheet',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
     'd.notes':'Notes','d.fav':'Favourite','d.status':'Status','d.edit':'Edit','d.saved':'Saved',
@@ -1168,6 +1172,7 @@ const I18N = {
     'c.authors':'En çok okunan yazarlar',
     'c.authorPhotos':'Araçlar’dan “Yazar fotoğrafları”nı çalıştırınca yüzler gelir.',
     'job.fillAuthorPhotos':'Yazar fotoğrafları — Open Library',
+    'job.fillPlatformIcons':'Platform simgeleri — tabloya indir',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
     'd.notes':'Notlar','d.fav':'Favori','d.status':'Durum','d.edit':'Düzenle','d.saved':'Kaydedildi',
@@ -1238,6 +1243,7 @@ const S = {
   search: {},
   settings: {},                   // platform usernames
   authors: {},                    // yazar adı -> portre adresi
+  icons: {},                      // platform -> SVG metni
   serverVersion: '',              // hangi Apps Script dağıtımına bağlıyız
   api: LS.get('api','') || DEFAULT_API,
   token: LS.get('token',''),
@@ -1356,6 +1362,7 @@ const API = {
     });
     S.settings = withDefaultProfiles(json.settings);
     S.authors = json.authors || {};
+    S.icons = json.icons || {};
     S.serverVersion = json.version || '';
     this.cache();
     return true;
@@ -1369,7 +1376,7 @@ const API = {
 
   cache(){
     try{
-      const small = {settings:S.settings, authors:S.authors};
+      const small = {settings:S.settings, authors:S.authors, icons:S.icons};
       SEC_IDS.forEach(id=> small[id] = S.data[id]);
       localStorage.setItem('backlog.cache', JSON.stringify(small));
     }catch(e){ /* over quota — fine, we just re-fetch next time */ }
@@ -1381,6 +1388,7 @@ const API = {
       SEC_IDS.forEach(id=> S.data[id] = c[id]||[]);
       S.settings = withDefaultProfiles(c.settings);
       S.authors = c.authors || {};
+      S.icons = c.icons || {};
       return true;
     }catch(e){ return false; }
   },
@@ -2190,7 +2198,9 @@ function openDetail(secId, rec, isNew){
       </div>
       <div class="detail-info">
         <h3>${esc(r[s.title]||'—')}</h3>
-        <div class="mono muted" style="font-size:12px">${esc([cardSub(secId, r), r[s.year]&&yearOf(r[s.year]), s.status&&r[s.status]].filter(Boolean).join(' · '))}</div>
+        <div class="mono muted" style="font-size:12px">${esc(
+          Array.from(new Set([cardSub(secId, r), r[s.year]&&yearOf(r[s.year]), s.status&&r[s.status]]
+            .filter(Boolean).map(String))).join(' · '))}</div>
         ${ratingBlock(secId, r)}
         ${progHTML}
         ${nz(r.URL)?`<a class="btn btn-sm" style="margin-top:12px" href="${esc(r.URL)}" target="_blank" rel="noopener">${esc(t('d.open'))} ↗</a>`:''}
@@ -2438,7 +2448,8 @@ async function uploadCover(file){
 
 /* ---------- 12c. BAKIM PANELİ ---------------------------------------- */
 const JOBS = ['fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
-              'fillBookCovers','fillGameGenres','fillAuthorPhotos','rehostCovers','backfillIds',
+              'fillBookCovers','fillGameGenres','fillAuthorPhotos','fillPlatformIcons',
+              'rehostCovers','backfillIds',
               'diagnose','freezeReport'];
 let JOB_BUSY = false;
 
@@ -2976,6 +2987,7 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape') $$('.overlay.on').forEach(o=>close$('#'+o.id));
 });
 
+$('#brandHome').onclick = ()=> go('home');
 $('#langEn').onclick = ()=>setLang('en');
 $('#langTr').onclick = ()=>setLang('tr');
 $('#authBtn').onclick = ()=>{
