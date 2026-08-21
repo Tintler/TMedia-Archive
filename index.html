@@ -966,14 +966,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwJX4I7yIT23_UTE618cWzEPKNBmEqgOomi5229vIGZ2WKZQqKqT79UkLt9Cn2PRpHXIw/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwTFbv-08pIMp2mGmfcNlcPSV_f3k9E5CSbtN6pb-mZsLLaFB8x3PZj-32rModzteaZeA/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v16';
+const NEEDS_SERVER = '2026-08-21-v17';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v16';
+const APP_VERSION = '2026-08-21-v17';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1229,6 +1229,7 @@ const I18N = {
     'job.fillPlatformIcons':'Platform icons — store them in the Sheet',
     'job.fillFfxiv':'Final Fantasy XIV character — Lodestone',
     'job.dumpLodestone':'Lodestone page check (for troubleshooting)',
+    'job.fixDateColumns':'Fix date columns — keep them as plain text',
     'xiv.profile':'Character profile','xiv.classes':'Classes','xiv.attributes':'Attributes',
     'xiv.race':'Race','xiv.guardian':'Guardian','xiv.town':'City-state',
     'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
@@ -1334,6 +1335,7 @@ const I18N = {
     'job.fillPlatformIcons':'Platform simgeleri — tabloya indir',
     'job.fillFfxiv':'Final Fantasy XIV karakteri — Lodestone',
     'job.dumpLodestone':'Lodestone sayfa kontrolü (sorun giderme)',
+    'job.fixDateColumns':'Tarih sütunlarını onar — düz metne sabitle',
     'xiv.profile':'Karakter bilgileri','xiv.classes':'Sınıflar','xiv.attributes':'Nitelikler',
     'xiv.race':'Irk','xiv.guardian':'Koruyucu','xiv.town':'Şehir',
     'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
@@ -1450,13 +1452,39 @@ const strictNum = v => {
   const t = String(v==null?'':v).trim().replace(',','.');
   return /^-?\d+(\.\d+)?$/.test(t) ? parseFloat(t) : null;
 };
+/* Google Sheets, "2026-08-06" gibi bir metni tarih sanıp hücrenin
+   biçimine göre "08-06-26" ya da "6.08.2026" olarak gösterebiliyor.
+   Bu yüzden yalnızca ISO değil, yaygın gösterimleri de tanıyoruz. */
 const DATE_RE = /^\d{4}-\d{2}-\d{2}([T ]|$)/;
-const asDate = v => {
+function asDate(v){
   const t = String(v==null?'':v).trim();
-  if(!DATE_RE.test(t)) return null;
-  const ms = Date.parse(t);
-  return isNaN(ms) ? null : ms;
-};
+  if(!t) return null;
+
+  if(DATE_RE.test(t)){                       // 2026-08-06 / 2026-08-06T09:00Z
+    const ms = Date.parse(t);
+    return isNaN(ms) ? null : ms;
+  }
+
+  /* gg.aa.yyyy — Türkçe gösterim */
+  let m = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if(m) return gunden(+m[3], +m[2], +m[1]);
+
+  /* aa-gg-yy · aa/gg/yyyy · gg/aa/yyyy
+     İlk sayı 12'den büyükse gün, değilse ay kabul ediyoruz. */
+  m = t.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2}|\d{4})$/);
+  if(m){
+    let a = +m[1], b = +m[2], y = +m[3];
+    if(y < 100) y += 2000;
+    const [ay, gun] = a > 12 ? [b, a] : [a, b];
+    return gunden(y, ay, gun);
+  }
+  return null;
+}
+function gunden(y, ay, gun){
+  if(!(y>1900 && ay>=1 && ay<=12 && gun>=1 && gun<=31)) return null;
+  const d = new Date(Date.UTC(y, ay-1, gun));
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
 /* Blanks always sink to the bottom, whichever way the column is sorted. */
 function compareCells(a, b, dir){
   const ea = a==null || a==='', eb = b==null || b==='';
@@ -2900,7 +2928,7 @@ const CLIENT_JOBS = {
 
 const JOBS = ['syncMalHistory','fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
               'fillBookCovers','fillGameGenres','fillAuthorPhotos','fillPlatformIcons',
-              'fillFfxiv','dumpLodestone','rehostCovers','backfillIds',
+              'fillFfxiv','dumpLodestone','fixDateColumns','rehostCovers','backfillIds',
               'diagnose','freezeReport'];
 let JOB_BUSY = false;
 
