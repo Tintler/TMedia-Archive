@@ -834,14 +834,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycby8hbL-a9BfMw1S8g3tIfsGjUkxyfSQC7mk1C6Nur4Umn6SjwDH5BmXx-XS-ndqEjnE/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycby9pRHX0f4le-JXNGu5K4IhDN7QDflzaCqgJg6N4587RAEMs6JRq7vdejkWU8Uhb0r7/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v5';
+const NEEDS_SERVER = '2026-08-21-v6';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v5';
+const APP_VERSION = '2026-08-21-v6';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1089,6 +1089,9 @@ const I18N = {
     'c.authorPhotos':'Run “Author photos” from Tools to put faces here.',
     'job.fillAuthorPhotos':'Author photos — Open Library',
     'job.fillPlatformIcons':'Platform icons — store them in the Sheet',
+    'job.syncMalHistory':'MyAnimeList history — episodes and chapters',
+    'job.needMal':'Add your MyAnimeList username to Profiles on the home page first.',
+    'tools.read':'read',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
     'd.notes':'Notes','d.fav':'Favourite','d.status':'Status','d.edit':'Edit','d.saved':'Saved',
@@ -1173,6 +1176,9 @@ const I18N = {
     'c.authorPhotos':'Araçlar’dan “Yazar fotoğrafları”nı çalıştırınca yüzler gelir.',
     'job.fillAuthorPhotos':'Yazar fotoğrafları — Open Library',
     'job.fillPlatformIcons':'Platform simgeleri — tabloya indir',
+    'job.syncMalHistory':'MyAnimeList geçmişi — bölüm ve chapter',
+    'job.needMal':'Önce ana sayfadaki Hesaplarım listesine MyAnimeList kullanıcı adını gir.',
+    'tools.read':'kayıt okundu',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
     'd.notes':'Notlar','d.fav':'Favori','d.status':'Durum','d.edit':'Düzenle','d.saved':'Kaydedildi',
@@ -1244,6 +1250,7 @@ const S = {
   settings: {},                   // platform usernames
   authors: {},                    // yazar adı -> portre adresi
   icons: {},                      // platform -> SVG metni
+  history: [],                    // MAL bölüm geçmişi
   serverVersion: '',              // hangi Apps Script dağıtımına bağlıyız
   api: LS.get('api','') || DEFAULT_API,
   token: LS.get('token',''),
@@ -1363,6 +1370,7 @@ const API = {
     S.settings = withDefaultProfiles(json.settings);
     S.authors = json.authors || {};
     S.icons = json.icons || {};
+    S.history = json.history || [];
     S.serverVersion = json.version || '';
     this.cache();
     return true;
@@ -1376,7 +1384,7 @@ const API = {
 
   cache(){
     try{
-      const small = {settings:S.settings, authors:S.authors, icons:S.icons};
+      const small = {settings:S.settings, authors:S.authors, icons:S.icons, history:S.history};
       SEC_IDS.forEach(id=> small[id] = S.data[id]);
       localStorage.setItem('backlog.cache', JSON.stringify(small));
     }catch(e){ /* over quota — fine, we just re-fetch next time */ }
@@ -1389,6 +1397,7 @@ const API = {
       S.settings = withDefaultProfiles(c.settings);
       S.authors = c.authors || {};
       S.icons = c.icons || {};
+      S.history = c.history || [];
       return true;
     }catch(e){ return false; }
   },
@@ -1750,6 +1759,23 @@ function stampNewRecord(secId, rec){
 
 function feedItems(){
   const out = [];
+
+  /* MAL geçmişi: hangi bölümü ne zaman izlediğin. Kaydın kendisiyle
+     eşleşirse kapağını ve puanını da kullanırız. */
+  (S.history||[]).forEach(h=>{
+    const id = String(h.Section||'').trim();
+    if(!SECTIONS[id]) return;
+    const when = asDate(h.Date);
+    if(when==null) return;
+    const rec = S.data[id].find(r=> String(r['MAL ID']||'')===String(h['MAL ID']||''));
+    out.push({
+      id, s:SECTIONS[id],
+      r: rec || {_id:'', Title:h.Title, Cover:''},
+      when,
+      hist: {n:h.Progress, title:h.Title}
+    });
+  });
+
   SEC_IDS.forEach(id=>{
     const s = SECTIONS[id], fields = FEED_DATES[id] || [];
     S.data[id].forEach(r=>{
@@ -1761,6 +1787,9 @@ function feedItems(){
         if(ms!=null){ when = ms; break; }
       }
       if(when==null) return;
+      /* Aynı kayıt için geçmiş satırı varsa onu yeğle. Kimliği olmayan
+         satırlar birbirine karışmasın diye boş _id'de eşleştirme yapmıyoruz. */
+      if(nz(r._id) && out.some(x=> x.hist && x.r && x.r._id===r._id)) return;
       out.push({id, s, r, when});
     });
   });
@@ -1769,6 +1798,10 @@ function feedItems(){
 
 function feedBits(it){
   const {s, r, id} = it, bits = [];
+  if(it.hist){
+    const birim = id==='manga' ? t('d.chapter') : t('d.episode');
+    return [`${birim} ${it.hist.n}`];
+  }
   const st = r.Status || r.Completion;
   if(nz(st) && st!=='No Status') bits.push(st);
   if(id==='anime' && numOf(r['Watched Episodes'])>0)
@@ -1791,7 +1824,7 @@ function renderFeed(){
     return `<button class="feed-row" data-sec="${id}" data-id="${esc(r._id)}">
       ${thumb}
       <span class="feed-tag" style="--sp:${s.color}">${esc(t('sec.'+id))}</span>
-      <span class="feed-title">${esc(r[s.title]||'—')}</span>
+      <span class="feed-title">${esc(r[s.title] || (it.hist&&it.hist.title) || '—')}</span>
       <span class="feed-bits">${esc(feedBits(it).join(' · '))}</span>
       <span class="feed-score">${sc>0?esc(sc):''}</span>
       <span class="feed-date">${esc(day)}</span>
@@ -2447,7 +2480,39 @@ async function uploadCover(file){
 }
 
 /* ---------- 12c. BAKIM PANELİ ---------------------------------------- */
-const JOBS = ['fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
+/* Sunucuda değil, tarayıcıda çalışan işler. Jikan Google'ı geri
+   çevirdiği için MAL geçmişi buradan çekilmek zorunda. */
+const CLIENT_JOBS = {
+  syncMalHistory: async function(yaz){
+    const user = (S.settings['MyAnimeList']||'').trim();
+    if(!user) throw new Error(t('job.needMal'));
+    let eklenen = 0, okunan = 0;
+
+    for(const kind of ['anime','manga']){
+      yaz(`${kind}: ${t('tools.running')}`);
+      const res = await fetch(`https://api.jikan.moe/v4/users/${encodeURIComponent(user)}/history/${kind}`);
+      if(!res.ok) throw new Error(`Jikan ${res.status}`);
+      const j = await res.json();
+      const rows = (j.data||[]).map(x=>({
+        Section: kind,
+        'MAL ID': x.entry && x.entry.mal_id,
+        Title: (x.entry && (x.entry.name || x.entry.title)) || '',
+        Progress: x.increment,
+        Date: x.date
+      })).filter(r=> r['MAL ID'] && r.Date);
+      okunan += rows.length;
+      yaz(`   ${rows.length} ${t('tools.read')}`);
+      if(rows.length){
+        const out = await API.post('history', {rows});
+        eklenen += out.added || 0;
+      }
+      await new Promise(r=> setTimeout(r, 1200));   // Jikan'ı yormayalım
+    }
+    return {done:eklenen, blank:Math.max(0, okunan-eklenen), skipped:0, ranOut:false};
+  }
+};
+
+const JOBS = ['syncMalHistory','fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
               'fillBookCovers','fillGameGenres','fillAuthorPhotos','fillPlatformIcons',
               'rehostCovers','backfillIds',
               'diagnose','freezeReport'];
@@ -2483,8 +2548,13 @@ async function runJob(job, btn){
     for(let tur=1; tur<=20; tur++){
       btn.innerHTML = `<span class="spinner"></span>`;
       yaz(`${t('tools.pass')} ${tur} — ${t('tools.running')}`);
-      const res = await API.post('task', {job});
-      const r = res.result || {};
+      let r;
+      if(CLIENT_JOBS[job]){
+        r = await CLIENT_JOBS[job](yaz) || {};
+      }else{
+        const res = await API.post('task', {job});
+        r = res.result || {};
+      }
 
       if(r.text){ yaz(r.text); break; }
 
