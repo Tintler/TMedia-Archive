@@ -611,10 +611,21 @@ tbody tr:last-child td{border-bottom:none}
 
 /* ---- FFXIV kartı ---- */
 .xiv-card{
-  display:block;width:100%;text-align:left;margin-top:14px;cursor:pointer;
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;
   background:var(--shelf);border:1px solid var(--edge-soft);border-radius:var(--r);
   padding:14px;transition:.16s;
 }
+.xiv-card .xiv-face{width:58px;height:58px;border-radius:9px;flex-shrink:0}
+.xiv-card-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.xiv-card-text b{
+  font-family:var(--display);font-weight:700;font-size:16.5px;letter-spacing:-.02em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.xiv-card-text small{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
+.xiv-card-job{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.xiv-card-job span{display:flex;flex-direction:column;gap:1px;text-align:right}
+.xiv-card-job b{font-family:var(--display);font-weight:800;font-size:20px;line-height:1;letter-spacing:-.02em}
+.xiv-card-job small{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--muted-2)}
 .xiv-card:hover{border-color:var(--brass);transform:translateY(-2px)}
 .xiv-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .xiv-crest{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0}
@@ -743,7 +754,8 @@ tbody tr:last-child td{border-bottom:none}
   margin:16px 0 0;padding:14px;border-radius:var(--r-sm);
   background:var(--ink);border:1px solid var(--edge);
   font-family:var(--mono);font-size:11.5px;line-height:1.6;color:var(--muted);
-  max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+  max-height:420px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+  user-select:text;
 }
 
 /* ---- son ayarlamalar ---- */
@@ -954,14 +966,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbzdwaQNM9FjsCMBYl-zIzkd4cjNzqucGGBZ2jWmd9ZBVy_JD6W-qBTpTWTO0D9V2pvlLw/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbx5d_a9c65OUxLSStlyLbEg6PDegyopq6tgJpJJm-DhoT2CdXhIimYJF4TiYp1viSq52A/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v13';
+const NEEDS_SERVER = '2026-08-21-v14';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v13';
+const APP_VERSION = '2026-08-21-v14';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -2020,8 +2032,7 @@ function renderFeed(){
   const daha = $('#feedMore');
   if(daha){
     daha.innerHTML = hepsi.length > feedShown
-      ? `<button class="btn" id="feedMoreBtn">${esc(t('loadMore'))} · ${shown.length}/${hepsi.length}</button>`
-      : '';
+      ? `<button class="btn" id="feedMoreBtn">${esc(t('loadMore'))}</button>` : '';
     const b = $('#feedMoreBtn');
     if(b) b.onclick = ()=>{ feedShown += FEED_STEP; renderFeed(); };
   }
@@ -2049,29 +2060,21 @@ function renderFfxivCard(){
       ? `<p class="mono muted" style="font-size:10.5px;margin:12px 0 0">${esc(t('xiv.empty'))}</p>` : '';
     return;
   }
-  const kutu = (ikon, ust, alt)=>`<div class="xiv-cell">
-      ${ikon}<span><b>${esc(ust)}</b>${alt?`<small>${esc(alt)}</small>`:''}</span></div>`;
   const gorsel = (src, sinif)=> src
     ? `<img class="${sinif}" src="${esc(src)}" alt="" loading="lazy">` : '';
 
-  /* Küçük kartta boy portresi değil, yüz görseli. */
+  /* Sade tutuyoruz: yüz görseli, adı, sunucusu ve o anki ana sınıfı. */
   el.innerHTML = `
     <div class="sub-h" style="margin-top:22px">${esc(t('xiv.card'))}</div>
     <button class="xiv-card" id="xivOpen">
-      <div class="xiv-head">
-        ${k.fcIcon ? gorsel(k.fcIcon,'xiv-crest')
-                   : (k.gcIcon ? gorsel(k.gcIcon,'xiv-crest')
-                               : `<i class="xiv-ico big">${XIV_ICONS.crest}</i>`)}
-        <span><b>${esc(k.name)}</b><small>${esc(k.server||'')}</small></span>
+      ${gorsel(k.avatar,'xiv-face') || `<i class="xiv-ico big">${XIV_ICONS.crest}</i>`}
+      <div class="xiv-card-text">
+        <b>${esc(k.name)}</b>
+        <small>${esc(k.server||'')}</small>
       </div>
-      <div class="xiv-grid">
-        ${gorsel(k.avatar,'xiv-face') || '<div class="xiv-face"></div>'}
-        ${kutu(k.jobIcon ? gorsel(k.jobIcon,'xiv-jobico') : `<i class="xiv-ico">${XIV_ICONS.job}</i>`,
-               'lvl '+(k.level||'—'), k.job || '')}
-      </div>
-      ${(k.gear&&k.gear.length)||k.hp ? `<div class="xiv-grid two">
-        ${k.hp?kutu('', 'HP', k.hp.toLocaleString(S.lang)):''}
-        ${(k.gear&&k.gear.length)?kutu('', t('xiv.gear'), k.gear.length+' '+t('xiv.pieces')):''}
+      ${(k.jobIcon || k.job) ? `<div class="xiv-card-job">
+        ${gorsel(k.jobIcon,'xiv-jobico big')}
+        <span><b>${k.level||'—'}</b><small>${esc(k.job||'')}</small></span>
       </div>`:''}
     </button>`;
   $('#xivOpen').onclick = ()=> go('ffxiv');
