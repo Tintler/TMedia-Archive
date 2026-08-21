@@ -834,14 +834,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycby9pRHX0f4le-JXNGu5K4IhDN7QDflzaCqgJg6N4587RAEMs6JRq7vdejkWU8Uhb0r7/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbw0m7U6rVg8XmizcNRCTk4rxIDpHmXLqxgseQhaWbRI17FA9mOA5gHa9KjzXBmtvrSpGA/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v6';
+const NEEDS_SERVER = '2026-08-21-v7';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v6';
+const APP_VERSION = '2026-08-21-v7';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -3126,9 +3126,16 @@ async function bootData(){
     paintBuildStamp();
     if(API.connected) toast(t('sync'),'ok');
   }catch(e){
-    if(!API.restoreCache()) toast(String(e.message||e),'err');
-    else toast(t('loadFail'),'err');
+    const varMi = API.restoreCache();
+    console.error('Backlog: veri alınamadı —', e);
+    toast(varMi ? t('loadFail') : String(e.message||e), 'err');
     splash(t('loadFail'), 100);
+    /* Sunucuya hiç ulaşılamadıysa ve elde kopya da yoksa ekran boş
+       kalmasın; ne yapılacağını yazalım. */
+    if(!varMi && API.connected){
+      $('#splashMsg').innerHTML =
+        `${esc(t('loadFail'))}<br><span class="mono" style="font-size:10px">${esc(S.api)}</span>`;
+    }
   }
 }
 
