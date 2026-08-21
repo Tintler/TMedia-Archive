@@ -902,14 +902,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxObJMVV9DL8KK3r-JU9DDnzRuOrKN6XJZvZjcKDahSZi3jQ-1aCqyS45vFILBMXQJPOQ/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycby_Rm6q7h5NbyceeSPVGjUPk3bekmPcOaCbw7Lj3osPxa9YDVkO3yY37u4WCWic3TFHtg/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v10';
+const NEEDS_SERVER = '2026-08-21-v11';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v10';
+const APP_VERSION = '2026-08-21-v11';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -2806,7 +2806,10 @@ async function runJob(job, btn){
       if(CLIENT_JOBS[job]){
         r = await CLIENT_JOBS[job](yaz) || {};
       }else{
-        const res = await API.post('task', {job});
+        /* Bazı işler sayfadaki ayara ihtiyaç duyuyor; henüz kaydedilmemiş
+           olabilir, o yüzden istekle birlikte gönderiyoruz. */
+        const ek = (job==='fillFfxiv') ? {ffxivId: ffxivId()} : {};
+        const res = await API.post('task', Object.assign({job}, ek));
         r = res.result || {};
       }
 
