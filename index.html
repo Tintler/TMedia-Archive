@@ -639,6 +639,11 @@ tbody tr:last-child td{border-bottom:none}
 .xiv-ico.big{width:40px;height:40px;color:var(--brass)}
 .xiv-ico svg{width:100%;height:100%;display:block}
 
+.xiv-face{width:66px;height:66px;object-fit:cover;display:block;background:var(--panel)}
+.xiv-face.big{width:64px;height:64px;border-radius:10px;border:1px solid var(--edge)}
+.xiv-jobico{width:26px;height:26px;display:block;flex-shrink:0}
+.xiv-jobico.big{width:40px;height:40px}
+
 /* ---- FFXIV sayfası ---- */
 .xiv-cols{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:26px;align-items:start}
 @media(max-width:1000px){.xiv-cols{grid-template-columns:1fr 1fr}}
@@ -661,7 +666,7 @@ tbody tr:last-child td{border-bottom:none}
 .xiv-stat b{display:block;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
 .xiv-stat small{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--muted-2);display:block;margin-top:4px}
-.xiv-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+.xiv-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px}
 .xiv-job{
   background:var(--panel);border:1px solid var(--edge-soft);border-radius:var(--r-sm);
   padding:9px 4px;text-align:center;
@@ -670,6 +675,38 @@ tbody tr:last-child td{border-bottom:none}
 .xiv-job b{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.06em}
 .xiv-job small{display:block;font-family:var(--display);font-weight:700;font-size:15px;margin-top:3px}
 .xiv-job.max small{color:var(--brass)}
+
+/* ---- FFXIV: profil satırları, aktif sınıf, nitelik grupları ---- */
+.xiv-profile{display:flex;flex-direction:column;gap:2px}
+.xiv-prof{display:flex;align-items:center;gap:13px;padding:10px 0;border-bottom:1px solid var(--edge-soft)}
+.xiv-prof:last-child{border-bottom:none}
+.xiv-prof-ico{width:30px;height:30px;object-fit:contain;display:block;flex-shrink:0}
+.xiv-prof span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.xiv-prof small{font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted-2)}
+.xiv-prof b{font-size:14.5px;font-weight:600}
+.xiv-active{
+  display:flex;align-items:center;gap:14px;margin-top:14px;padding:14px;
+  background:var(--shelf);border:1px solid var(--edge-soft);border-radius:var(--r);
+}
+.xiv-active span{display:flex;flex-direction:column;gap:2px}
+.xiv-active small{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:.1em}
+.xiv-active b{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em}
+.xiv-hpmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.xiv-hpmp div{background:var(--shelf);border:1px solid var(--edge-soft);border-radius:var(--r-sm);padding:11px 13px}
+.xiv-hpmp small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted-2);display:block}
+.xiv-hpmp b{font-family:var(--display);font-weight:700;font-size:18px;display:block;margin:3px 0 7px}
+.xiv-hpmp .bar{display:block;height:3px;border-radius:2px}
+.xiv-hpmp .bar.hp{background:#63C08C}
+.xiv-hpmp .bar.mp{background:#D46FA8}
+.xiv-attr-group{margin-bottom:18px}
+.xiv-attr-group h4{
+  font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--brass);margin:0 0 4px;
+}
+.xiv-job.off{opacity:.4}
+.xiv-job small{display:block;font-family:var(--display);font-weight:700;font-size:14px;margin-top:4px}
+.xiv-job .xiv-jobico{margin:0 auto}
 
 /* ---- sürüm damgası ---- */
 .build-stamp{
@@ -902,14 +939,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycby_Rm6q7h5NbyceeSPVGjUPk3bekmPcOaCbw7Lj3osPxa9YDVkO3yY37u4WCWic3TFHtg/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbx0KnsAexD1o5Z2FS-hTTKAnwjCEfu628TO0rml9hQD5KipUXTEfDWSlQBEfOsDOUmaNw/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v11';
+const NEEDS_SERVER = '2026-08-21-v12';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v11';
+const APP_VERSION = '2026-08-21-v12';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1168,6 +1205,10 @@ const I18N = {
     'xiv.race':'Race','xiv.guardian':'Guardian','xiv.town':'City-state',
     'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
     'xiv.achievements':'Achievements','xiv.minions':'Minions','xiv.mounts':'Mounts',
+    'xiv.card':'Final Fantasy XIV profile','xiv.level':'Level',
+    'xiv.g.attributes':'Attributes','xiv.g.offense':'Offensive properties',
+    'xiv.g.defense':'Defensive properties','xiv.g.physical':'Physical properties',
+    'xiv.g.mental':'Mental properties','xiv.g.role':'Role','xiv.g.other':'Other',
     'xiv.source':'Source','xiv.none':'No character yet',
     'xiv.empty':'Run “Final Fantasy XIV character” from Tools to fill this in.',
     'job.syncMalHistory':'MyAnimeList history — episodes and chapters',
@@ -1268,6 +1309,10 @@ const I18N = {
     'xiv.race':'Irk','xiv.guardian':'Koruyucu','xiv.town':'Şehir',
     'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
     'xiv.achievements':'Başarımlar','xiv.minions':'Minionlar','xiv.mounts':'Binekler',
+    'xiv.card':'Final Fantasy XIV profili','xiv.level':'Seviye',
+    'xiv.g.attributes':'Nitelikler','xiv.g.offense':'Saldırı',
+    'xiv.g.defense':'Savunma','xiv.g.physical':'Fiziksel',
+    'xiv.g.mental':'Zihinsel','xiv.g.role':'Rol','xiv.g.other':'Diğer',
     'xiv.source':'Kaynak','xiv.none':'Karakter yok',
     'xiv.empty':'Araçlar’dan “Final Fantasy XIV karakteri”ni çalıştırınca dolar.',
     'job.syncMalHistory':'MyAnimeList geçmişi — bölüm ve chapter',
@@ -1978,26 +2023,45 @@ function renderFfxivCard(){
     return;
   }
   const kutu = (ikon, ust, alt)=>`<div class="xiv-cell">
-      <i class="xiv-ico">${ikon}</i><span><b>${esc(ust)}</b>${alt?`<small>${esc(alt)}</small>`:''}</span></div>`;
+      ${ikon}<span><b>${esc(ust)}</b>${alt?`<small>${esc(alt)}</small>`:''}</span></div>`;
+  const gorsel = (src, sinif)=> src
+    ? `<img class="${sinif}" src="${esc(src)}" alt="" loading="lazy">` : '';
 
-  el.innerHTML = `<button class="xiv-card" id="xivOpen">
-    <div class="xiv-head">
-      ${k.avatar?`<img class="xiv-crest" src="${esc(k.avatar)}" alt="">`
-                :`<i class="xiv-ico big">${XIV_ICONS.crest}</i>`}
-      <span><b>${esc(k.name)}</b><small>${esc(k.server||'')}</small></span>
-    </div>
-    <div class="xiv-grid">
-      ${k.portrait?`<img class="xiv-por" src="${esc(k.portrait)}" alt="">`:''}
-      ${kutu(XIV_ICONS.job, 'lvl '+(k.level||'—'), k.jobAbbr || k.job || '')}
-      ${kutu(XIV_ICONS.trophy, (k.achievements||0).toLocaleString(S.lang), '')}
-    </div>
-    <div class="xiv-grid two">
-      ${kutu(XIV_ICONS.minion, t('xiv.minions'), (k.minions||0).toLocaleString(S.lang))}
-      ${kutu(XIV_ICONS.mount, t('xiv.mounts'), (k.mounts||0).toLocaleString(S.lang))}
-    </div>
-  </button>`;
+  /* Küçük kartta boy portresi değil, yüz görseli. */
+  el.innerHTML = `
+    <div class="sub-h" style="margin-top:22px">${esc(t('xiv.card'))}</div>
+    <button class="xiv-card" id="xivOpen">
+      <div class="xiv-head">
+        ${k.fcIcon ? gorsel(k.fcIcon,'xiv-crest')
+                   : (k.gcIcon ? gorsel(k.gcIcon,'xiv-crest')
+                               : `<i class="xiv-ico big">${XIV_ICONS.crest}</i>`)}
+        <span><b>${esc(k.name)}</b><small>${esc(k.server||'')}</small></span>
+      </div>
+      <div class="xiv-grid">
+        ${gorsel(k.avatar,'xiv-face') || '<div class="xiv-face"></div>'}
+        ${kutu(k.jobIcon ? gorsel(k.jobIcon,'xiv-jobico') : `<i class="xiv-ico">${XIV_ICONS.job}</i>`,
+               'lvl '+(k.level||'—'), k.job || '')}
+        ${kutu(`<i class="xiv-ico">${XIV_ICONS.trophy}</i>`,
+               (k.achievements||0).toLocaleString(S.lang), '')}
+      </div>
+      <div class="xiv-grid two">
+        ${kutu(`<i class="xiv-ico">${XIV_ICONS.minion}</i>`, t('xiv.minions'), (k.minions||0).toLocaleString(S.lang))}
+        ${kutu(`<i class="xiv-ico">${XIV_ICONS.mount}</i>`, t('xiv.mounts'), (k.mounts||0).toLocaleString(S.lang))}
+      </div>
+    </button>`;
   $('#xivOpen').onclick = ()=> go('ffxiv');
 }
+
+/* Lodestone nitelikleri düz bir liste halinde veriyor; Lodestone'daki
+   gibi anlamlı başlıklar altında toplayalım. */
+const XIV_ATTR_GROUPS = [
+  ['xiv.g.attributes', ['Strength','Dexterity','Vitality','Intelligence','Mind']],
+  ['xiv.g.offense',    ['Critical Hit Rate','Determination','Direct Hit Rate']],
+  ['xiv.g.defense',    ['Defense','Magic Defense']],
+  ['xiv.g.physical',   ['Attack Power','Skill Speed']],
+  ['xiv.g.mental',     ['Attack Magic Potency','Healing Magic Potency','Spell Speed']],
+  ['xiv.g.role',       ['Tenacity','Piety']]
+];
 
 function renderFfxivPage(){
   const k = S.ffxiv, el = $('#ffxivPage');
@@ -2006,17 +2070,39 @@ function renderFfxivPage(){
       <div class="empty"><h3>${esc(t('xiv.none'))}</h3><p>${esc(t('xiv.empty'))}</p></div>`;
     return;
   }
-  const satir = (etiket, deger)=> nz(deger)
-    ? `<div class="xiv-row"><span>${esc(etiket)}</span><b>${esc(deger)}</b></div>` : '';
+  const gorsel = (src, sinif)=> src
+    ? `<img class="${sinif}" src="${esc(src)}" alt="" loading="lazy">` : '';
 
-  const sinifKutu = j=>`<div class="xiv-job ${j.level>=100?'max':''}">
-      <b>${esc(j.abbr)}</b><small>${j.level||'—'}</small></div>`;
+  /* Lodestone'daki gibi: simge + üstte etiket, altta değer. */
+  const profilSatir = (ikon, etiket, deger)=> nz(deger)
+    ? `<div class="xiv-prof">
+         ${ikon ? gorsel(ikon,'xiv-prof-ico') : '<span class="xiv-prof-ico"></span>'}
+         <span><small>${esc(etiket)}</small><b>${esc(deger)}</b></span>
+       </div>` : '';
+
+  const bulunan = new Set();
+  const nitelikGrubu = ([anahtar, adlar])=>{
+    const satirlar = adlar
+      .map(ad=> (k.attributes||[]).find(a=> a.name===ad))
+      .filter(Boolean);
+    satirlar.forEach(a=> bulunan.add(a.name));
+    if(!satirlar.length) return '';
+    return `<div class="xiv-attr-group"><h4>${esc(t(anahtar))}</h4>
+      ${satirlar.map(a=>`<div class="xiv-row"><span>${esc(a.name)}</span>
+        <b>${a.value.toLocaleString(S.lang)}</b></div>`).join('')}</div>`;
+  };
+  const gruplar = XIV_ATTR_GROUPS.map(nitelikGrubu).join('');
+  const kalan = (k.attributes||[]).filter(a=> !bulunan.has(a.name));
 
   el.innerHTML = `
     <div class="sec-head">
-      <div>
-        <h1 class="sec-title">${esc(k.name)}</h1>
-        <div class="sec-meta">${esc([k.title, k.server, k.dc].filter(Boolean).join(' · '))}</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        ${gorsel(k.avatar,'xiv-face big')}
+        <div>
+          ${k.title?`<div class="sec-meta" style="margin:0 0 2px">${esc(k.title)}</div>`:''}
+          <h1 class="sec-title">${esc(k.name)}</h1>
+          <div class="sec-meta">${esc([k.server, k.dc && '('+k.dc+')', k.race].filter(Boolean).join(' · '))}</div>
+        </div>
       </div>
       <button class="btn btn-sm" id="xivBack">← ${esc(t('nav.home'))}</button>
     </div>
@@ -2024,21 +2110,31 @@ function renderFfxivPage(){
     <div class="xiv-cols">
       <div>
         <div class="sub-h">${esc(t('xiv.profile'))}</div>
-        <div class="xiv-list">
-          ${satir(t('xiv.race'), [k.race, k.tribe].filter(Boolean).join(' · '))}
-          ${satir(t('xiv.guardian'), k.guardian)}
-          ${satir(t('xiv.town'), k.town)}
-          ${satir(t('xiv.gc'), [k.gc, k.gcRank].filter(Boolean).join(' — '))}
-          ${satir(t('xiv.fc'), k.fc)}
-          ${satir(t('xiv.hp'), k.hp && k.hp.toLocaleString(S.lang))}
+        <div class="xiv-profile">
+          ${profilSatir(k.guardianIcon, t('xiv.guardian'), k.guardian)}
+          ${profilSatir(k.townIcon, t('xiv.town'), k.town)}
+          ${profilSatir(k.gcIcon, k.gc || t('xiv.gc'), k.gcRank || k.gc)}
+          ${profilSatir(k.fcIcon, t('xiv.fc'), k.fc)}
         </div>
 
         ${(k.jobs&&k.jobs.length)?`<div class="sub-h">${esc(t('xiv.classes'))}</div>
-          <div class="xiv-jobs">${k.jobs.map(sinifKutu).join('')}</div>`:''}
+          <div class="xiv-jobs">${k.jobs.map(j=>`
+            <div class="xiv-job ${j.level>=100?'max':''} ${j.level?'':'off'}" title="${esc(j.name)}">
+              ${gorsel(j.icon,'xiv-jobico') || `<b>${esc((j.name||'?').slice(0,3))}</b>`}
+              <small>${j.level||'—'}</small>
+            </div>`).join('')}</div>`:''}
       </div>
 
       <div>
-        ${k.portrait?`<img class="xiv-portrait" src="${esc(k.portrait)}" alt="">`:''}
+        ${gorsel(k.portrait,'xiv-portrait')}
+        <div class="xiv-active">
+          ${k.jobIcon?gorsel(k.jobIcon,'xiv-jobico big'):''}
+          <span><small>${esc(t('xiv.level'))} ${k.level||'—'}</small><b>${esc((k.job||'').toUpperCase())}</b></span>
+        </div>
+        ${(k.hp||k.mp)?`<div class="xiv-hpmp">
+          ${k.hp?`<div><small>HP</small><b>${k.hp.toLocaleString(S.lang)}</b><i class="bar hp"></i></div>`:''}
+          ${k.mp?`<div><small>MP</small><b>${k.mp.toLocaleString(S.lang)}</b><i class="bar mp"></i></div>`:''}
+        </div>`:''}
         <div class="xiv-stats">
           ${[[XIV_ICONS.trophy, t('xiv.achievements'), k.achievements],
              [XIV_ICONS.minion, t('xiv.minions'), k.minions],
@@ -2050,9 +2146,10 @@ function renderFfxivPage(){
 
       <div>
         ${(k.attributes&&k.attributes.length)?`<div class="sub-h">${esc(t('xiv.attributes'))}</div>
-          <div class="xiv-list">${k.attributes.map(a=>
-            `<div class="xiv-row"><span>${esc(a.name)}</span><b>${Number(a.value).toLocaleString(S.lang)}</b></div>`
-          ).join('')}</div>`:''}
+          ${gruplar}
+          ${kalan.length?`<div class="xiv-attr-group"><h4>${esc(t('xiv.g.other'))}</h4>
+            ${kalan.map(a=>`<div class="xiv-row"><span>${esc(a.name)}</span>
+              <b>${a.value.toLocaleString(S.lang)}</b></div>`).join('')}</div>`:''}`:''}
       </div>
     </div>
 
@@ -2065,7 +2162,7 @@ function renderFfxivPage(){
   $('#xivBack').onclick = ()=> go('home');
 }
 
-/* ---------- 8c. PLATFORM ACCOUNTS ------------------------------------ */
+/* ---------- 8c. PLATFORM ACCOUNTS ---/* ---------- 8c. PLATFORM ACCOUNTS ------------------------------------ */
 function renderProfiles(){
   $('#profiles').innerHTML = PLATFORMS.map(pf=>{
     const v = S.settings[pf] || '';
