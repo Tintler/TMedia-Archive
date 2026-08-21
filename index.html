@@ -1024,7 +1024,7 @@ const SECTIONS = {
     startFilters:{'Status':'Played'}, startSort:{by:'Rating (Score)', dir:-1},
     /* Bitmiş bir oyunun damgası dışa aktarımlarda boşuna tazelenmesin;
        hâlâ oynananlarda güncellensin. */
-    freezeWhen:[{column:'Last updated', field:'Status', equals:['Played']}],
+    freezeWhen:[{column:'Last updated', field:'Status', equals:['Played'], unlessChanged:['Status','Completion']}],
     top:['Status','Completion'],
     filters:[
       {f:'Platform',t:'select'},{f:'Status',t:'select'},{f:'Completion',t:'select'},
@@ -1679,8 +1679,16 @@ const API = {
         if(cur){
           const donmus = new Set(sec.freezeOnUpdate);
           sec.freezeWhen.forEach(k=>{
-            const v = String((inc[k.field]!==undefined ? inc[k.field] : cur[k.field]) || '').trim();
-            if(k.equals.some(x=> x.toLowerCase()===v.toLowerCase())) donmus.add(k.column);
+            const curVal = String(cur[k.field] || '').trim();
+            let uyar = k.equals.some(x=> x.toLowerCase() === curVal.toLowerCase());
+            if(uyar && k.unlessChanged){
+              const degisti = k.unlessChanged.some(alan => {
+                if(inc[alan] === undefined) return false;
+                return String(inc[alan] || '').trim() !== String(cur[alan] || '').trim();
+              });
+              if(degisti) uyar = false;
+            }
+            if(uyar) donmus.add(k.column);
           });
           sec.imported.forEach(c=>{
             if(donmus.has(c)) return;
