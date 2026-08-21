@@ -609,6 +609,68 @@ tbody tr:last-child td{border-bottom:none}
 @media(max-width:760px){.fr-row{grid-template-columns:repeat(3,1fr)}}
 .chart-box.xtall{height:460px}
 
+/* ---- FFXIV kartı ---- */
+.xiv-card{
+  display:block;width:100%;text-align:left;margin-top:14px;cursor:pointer;
+  background:var(--shelf);border:1px solid var(--edge-soft);border-radius:var(--r);
+  padding:14px;transition:.16s;
+}
+.xiv-card:hover{border-color:var(--brass);transform:translateY(-2px)}
+.xiv-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.xiv-crest{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.xiv-head span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.xiv-head b{
+  font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.02em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.xiv-head small{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
+.xiv-grid{display:grid;grid-template-columns:66px 1fr 1fr;gap:1px;background:var(--edge-soft);
+  border-radius:var(--r-sm);overflow:hidden}
+.xiv-grid.two{grid-template-columns:1fr 1fr;margin-top:1px}
+.xiv-por{width:100%;height:100%;object-fit:cover;object-position:top;display:block;background:var(--panel)}
+.xiv-cell{
+  display:flex;align-items:center;gap:9px;background:var(--panel);padding:11px 12px;min-width:0;
+}
+.xiv-cell span{display:flex;flex-direction:column;gap:1px;min-width:0}
+.xiv-cell b{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.02em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xiv-cell small{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
+.xiv-ico{display:block;width:19px;height:19px;color:var(--muted);flex-shrink:0}
+.xiv-ico.big{width:40px;height:40px;color:var(--brass)}
+.xiv-ico svg{width:100%;height:100%;display:block}
+
+/* ---- FFXIV sayfası ---- */
+.xiv-cols{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:26px;align-items:start}
+@media(max-width:1000px){.xiv-cols{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.xiv-cols{grid-template-columns:1fr}}
+.xiv-list{display:flex;flex-direction:column}
+.xiv-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:9px 0;border-bottom:1px solid var(--edge-soft);
+}
+.xiv-row span{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted-2)}
+.xiv-row b{font-size:14px;font-weight:600;text-align:right}
+.xiv-portrait{width:100%;border-radius:var(--r);border:1px solid var(--edge);display:block}
+.xiv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.xiv-stat{
+  background:var(--shelf);border:1px solid var(--edge-soft);border-radius:var(--r-sm);
+  padding:14px 10px;text-align:center;
+}
+.xiv-stat .xiv-ico{margin:0 auto 8px;color:var(--brass)}
+.xiv-stat b{display:block;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
+.xiv-stat small{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted-2);display:block;margin-top:4px}
+.xiv-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+.xiv-job{
+  background:var(--panel);border:1px solid var(--edge-soft);border-radius:var(--r-sm);
+  padding:9px 4px;text-align:center;
+}
+.xiv-job.max{border-color:var(--brass)}
+.xiv-job b{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.xiv-job small{display:block;font-family:var(--display);font-weight:700;font-size:15px;margin-top:3px}
+.xiv-job.max small{color:var(--brass)}
+
 /* ---- sürüm damgası ---- */
 .build-stamp{
   position:fixed;right:10px;bottom:8px;z-index:150;pointer-events:none;
@@ -713,6 +775,7 @@ tbody tr:last-child td{border-bottom:none}
           <section class="profiles-wrap">
             <div class="sub-h" data-i18n="home.profiles">Profiles</div>
             <div class="profiles" id="profiles"></div>
+            <div id="ffxivCard"></div>
           </section>
         </div>
         <div class="home-main">
@@ -757,6 +820,11 @@ tbody tr:last-child td{border-bottom:none}
       <div id="secBody"></div>
       <div class="loadmore" id="loadMoreWrap"></div>
     </div>
+  </section>
+
+  <!-- ========== FFXIV ========== -->
+  <section class="page" id="page-ffxiv">
+    <div class="wrap" id="ffxivPage"></div>
   </section>
 
   <!-- ========== STATS ========== -->
@@ -834,14 +902,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbywmVr2axG6c9il87viTcROWzk9TDAJHHNx65xAc7x7rtgPkajV11d6JGkVzfuLiM5JjQ/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxObJMVV9DL8KK3r-JU9DDnzRuOrKN6XJZvZjcKDahSZi3jQ-1aCqyS45vFILBMXQJPOQ/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v8';
+const NEEDS_SERVER = '2026-08-21-v10';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v8';
+const APP_VERSION = '2026-08-21-v10';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1001,8 +1069,9 @@ for (const id of SEC_IDS){
 
 /* Accounts shown on the home page. Usernames live in the Sheet's settings;
    these are the starting values, used until something is saved over them. */
+const FFXIV_KEY = 'FFXIV (Lodestone ID)';
 const PLATFORMS = ['PlayStation Network','Xbox','Nintendo','Steam','Battle.net','Epic Games',
-                   'GOG','Origin','Uplay','MyAnimeList','IMDb','Goodreads','Backloggd'];
+                   'GOG','Origin','Uplay','MyAnimeList','IMDb','Goodreads','Backloggd', FFXIV_KEY];
 /* Servis işaretleri. Simgeler Simple Icons'tan (cdn.simpleicons.org) marka
    renginde çekilir; adres bir gün çalışmazsa yerine harf rozeti düşer. */
 const PLATFORM_MARKS = {
@@ -1018,7 +1087,8 @@ const PLATFORM_MARKS = {
   'MyAnimeList':        {t:'MA', c:'#5A7BD4', icon:'myanimelist'},
   'IMDb':               {t:'IM', c:'#E3B23C', icon:'imdb'},
   'Goodreads':          {t:'GR', c:'#C09A72', icon:'goodreads'},
-  'Backloggd':          {t:'BL', c:'#4FBFAE', icon:''}
+  'Backloggd':          {t:'BL', c:'#4FBFAE', icon:''},
+  'FFXIV (Lodestone ID)':{t:'XIV', c:'#C9A227', icon:''}
 };
 /* Simgeler bir kez Sheet'e indiriliyor ve oradan gömülüyor; dışarıya
    istek gitmiyor. Henüz indirilmemişse harf rozeti gösterilir. */
@@ -1041,7 +1111,8 @@ const DEFAULT_PROFILES = {
   'GOG':'Tintler',
   'Origin':'Tintler',
   'Uplay':'Tintler',
-  'MyAnimeList':'Tintler'
+  'MyAnimeList':'Tintler',
+  'FFXIV (Lodestone ID)':'11334126'
 };
 
 /* ---------- 2. TRANSLATIONS ------------------------------------------ */
@@ -1092,8 +1163,18 @@ const I18N = {
     'c.authorPhotos':'Run “Author photos” from Tools to put faces here.',
     'job.fillAuthorPhotos':'Author photos — Open Library',
     'job.fillPlatformIcons':'Platform icons — store them in the Sheet',
+    'job.fillFfxiv':'Final Fantasy XIV character — Lodestone',
+    'xiv.profile':'Character profile','xiv.classes':'Classes','xiv.attributes':'Attributes',
+    'xiv.race':'Race','xiv.guardian':'Guardian','xiv.town':'City-state',
+    'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
+    'xiv.achievements':'Achievements','xiv.minions':'Minions','xiv.mounts':'Mounts',
+    'xiv.source':'Source','xiv.none':'No character yet',
+    'xiv.empty':'Run “Final Fantasy XIV character” from Tools to fill this in.',
     'job.syncMalHistory':'MyAnimeList history — episodes and chapters',
     'job.needMal':'Add your MyAnimeList username to Profiles on the home page first.',
+    'job.malUser':'MyAnimeList does not know that username — check Profiles on the home page.',
+    'job.retry':'waiting, then trying again',
+    'job.jikanDown':'the MyAnimeList API is not answering right now. Try again in a few minutes, or use mal-history.js from the browser console.',
     'tools.read':'read',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
@@ -1182,8 +1263,18 @@ const I18N = {
     'c.authorPhotos':'Araçlar’dan “Yazar fotoğrafları”nı çalıştırınca yüzler gelir.',
     'job.fillAuthorPhotos':'Yazar fotoğrafları — Open Library',
     'job.fillPlatformIcons':'Platform simgeleri — tabloya indir',
+    'job.fillFfxiv':'Final Fantasy XIV karakteri — Lodestone',
+    'xiv.profile':'Karakter bilgileri','xiv.classes':'Sınıflar','xiv.attributes':'Nitelikler',
+    'xiv.race':'Irk','xiv.guardian':'Koruyucu','xiv.town':'Şehir',
+    'xiv.gc':'Grand Company','xiv.fc':'Free Company','xiv.hp':'HP',
+    'xiv.achievements':'Başarımlar','xiv.minions':'Minionlar','xiv.mounts':'Binekler',
+    'xiv.source':'Kaynak','xiv.none':'Karakter yok',
+    'xiv.empty':'Araçlar’dan “Final Fantasy XIV karakteri”ni çalıştırınca dolar.',
     'job.syncMalHistory':'MyAnimeList geçmişi — bölüm ve chapter',
     'job.needMal':'Önce ana sayfadaki Hesaplarım listesine MyAnimeList kullanıcı adını gir.',
+    'job.malUser':'MyAnimeList bu kullanıcı adını tanımıyor — ana sayfadaki Hesaplarım listesini kontrol et.',
+    'job.retry':'bekleyip yeniden deneniyor',
+    'job.jikanDown':'MyAnimeList API’si şu anda yanıt vermiyor. Birkaç dakika sonra tekrar dene ya da mal-history.js betiğini tarayıcı konsolundan çalıştır.',
     'tools.read':'kayıt okundu',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
@@ -1257,6 +1348,7 @@ const S = {
   authors: {},                    // yazar adı -> portre adresi
   icons: {},                      // platform -> SVG metni
   history: [],                    // MAL bölüm geçmişi
+  ffxiv: null,                    // Lodestone karakteri
   serverVersion: '',              // hangi Apps Script dağıtımına bağlıyız
   api: LS.get('api','') || DEFAULT_API,
   token: LS.get('token',''),
@@ -1377,6 +1469,7 @@ const API = {
     S.authors = json.authors || {};
     S.icons = json.icons || {};
     S.history = json.history || [];
+    S.ffxiv = json.ffxiv || null;
     S.serverVersion = json.version || '';
     this.cache();
     return true;
@@ -1390,7 +1483,8 @@ const API = {
 
   cache(){
     try{
-      const small = {settings:S.settings, authors:S.authors, icons:S.icons, history:S.history};
+      const small = {settings:S.settings, authors:S.authors, icons:S.icons,
+                     history:S.history, ffxiv:S.ffxiv};
       SEC_IDS.forEach(id=> small[id] = S.data[id]);
       localStorage.setItem('backlog.cache', JSON.stringify(small));
     }catch(e){ /* over quota — fine, we just re-fetch next time */ }
@@ -1404,6 +1498,7 @@ const API = {
       S.authors = c.authors || {};
       S.icons = c.icons || {};
       S.history = c.history || [];
+      S.ffxiv = c.ffxiv || null;
       return true;
     }catch(e){ return false; }
   },
@@ -1651,6 +1746,7 @@ function applyLang(){
   paintBuildStamp();
   if(S.page==='home') renderHome();
   else if(S.page==='stats') renderStats();
+  else if(S.page==='ffxiv') renderFfxivPage();
   else renderSection();
 }
 function setLang(l){ S.lang=l; LS.set('lang',l); applyLang(); }
@@ -1664,13 +1760,14 @@ function buildNav(){
 }
 function go(where){
   window.scrollTo({top:0,behavior:'instant'});
-  if(where==='home'||where==='stats'){ S.page = where; }
+  if(where==='home'||where==='stats'||where==='ffxiv'){ S.page = where; }
   else { S.page='section'; S.sec=where; }
   $$('.page').forEach(p=>p.classList.remove('on'));
   $('#page-'+(S.page==='section'?'section':S.page)).classList.add('on');
   buildNav();
   if(S.page==='home') renderHome();
   else if(S.page==='stats') renderStats();
+  else if(S.page==='ffxiv') renderFfxivPage();
   else renderSection();
   history.replaceState(null,'','#'+where);
 }
@@ -1719,6 +1816,7 @@ function renderHome(){
   renderPlaying();
   renderFeed();
   renderProfiles();
+  renderFfxivCard();
 }
 
 /* Elindeki oyunlardan Status'u Playing olanlar, ana sayfanın başında. */
@@ -1855,6 +1953,116 @@ function renderFeed(){
     if(rec) openDetail(b.dataset.sec, rec);
   });
 
+}
+
+/* ---------- 8d. FINAL FANTASY XIV ------------------------------------ */
+/* Ekrandaki simgeler yazı tipinden değil, tek tek çizilmiş SVG'lerden
+   geliyor; dışarıya bağımlılık yok. */
+const XIV_ICONS = {
+  trophy:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 3h3v3a4 4 0 0 1-4 4h-.35A5 5 0 0 1 13 12.9V16h3v2H8v-2h3v-3.1A5 5 0 0 1 7.35 10H7a4 4 0 0 1-4-4V3h3V2h12v1Zm0 2v3h-.1A4 4 0 0 0 18 7V5Zm-12 0v2a4 4 0 0 0 .1 1H6V5Z"/><path d="M5 20h14v2H5z"/></svg>`,
+  minion:`<svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="6.5" cy="9" rx="2.2" ry="3"/><ellipse cx="17.5" cy="9" rx="2.2" ry="3"/><ellipse cx="9.6" cy="5.4" rx="2" ry="2.7"/><ellipse cx="14.4" cy="5.4" rx="2" ry="2.7"/><path d="M12 11c3 0 5.5 2.4 5.5 5 0 2-1.6 3.3-3.6 3.3-1 0-1.4-.4-1.9-.4s-.9.4-1.9.4C8.1 19.3 6.5 18 6.5 16c0-2.6 2.5-5 5.5-5Z"/></svg>`,
+  mount:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c3.9 0 7 3.1 7 7v5a7 7 0 0 1-3 5.7V22h-3v-3h-2v3H8v-2.3A7 7 0 0 1 5 14V9c0-3.9 3.1-7 7-7Zm0 2.5A4.5 4.5 0 0 0 7.5 9v5a4.5 4.5 0 0 0 9 0V9A4.5 4.5 0 0 0 12 4.5Z"/></svg>`,
+  job:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6c2.5 0 4 1.6 4 4v4c0 2.4-1.5 4-4 4V6Zm16 0v12c-2.5 0-4-1.6-4-4v-4c0-2.4 1.5-4 4-4ZM9.2 9h5.6v6H9.2z"/></svg>`,
+  crest:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v7c0 4.5 3.4 8.7 8 10 4.6-1.3 8-5.5 8-10V5l-8-3Z"/></svg>`
+};
+
+function ffxivId(){ return String(S.settings[FFXIV_KEY]||'').replace(/\D/g,''); }
+
+function renderFfxivCard(){
+  const el = $('#ffxivCard');
+  if(!el) return;
+  const k = S.ffxiv;
+  if(!k || !k.name){
+    el.innerHTML = (S.auth && ffxivId())
+      ? `<p class="mono muted" style="font-size:10.5px;margin:12px 0 0">${esc(t('xiv.empty'))}</p>` : '';
+    return;
+  }
+  const kutu = (ikon, ust, alt)=>`<div class="xiv-cell">
+      <i class="xiv-ico">${ikon}</i><span><b>${esc(ust)}</b>${alt?`<small>${esc(alt)}</small>`:''}</span></div>`;
+
+  el.innerHTML = `<button class="xiv-card" id="xivOpen">
+    <div class="xiv-head">
+      ${k.avatar?`<img class="xiv-crest" src="${esc(k.avatar)}" alt="">`
+                :`<i class="xiv-ico big">${XIV_ICONS.crest}</i>`}
+      <span><b>${esc(k.name)}</b><small>${esc(k.server||'')}</small></span>
+    </div>
+    <div class="xiv-grid">
+      ${k.portrait?`<img class="xiv-por" src="${esc(k.portrait)}" alt="">`:''}
+      ${kutu(XIV_ICONS.job, 'lvl '+(k.level||'—'), k.jobAbbr || k.job || '')}
+      ${kutu(XIV_ICONS.trophy, (k.achievements||0).toLocaleString(S.lang), '')}
+    </div>
+    <div class="xiv-grid two">
+      ${kutu(XIV_ICONS.minion, t('xiv.minions'), (k.minions||0).toLocaleString(S.lang))}
+      ${kutu(XIV_ICONS.mount, t('xiv.mounts'), (k.mounts||0).toLocaleString(S.lang))}
+    </div>
+  </button>`;
+  $('#xivOpen').onclick = ()=> go('ffxiv');
+}
+
+function renderFfxivPage(){
+  const k = S.ffxiv, el = $('#ffxivPage');
+  if(!k || !k.name){
+    el.innerHTML = `<div class="sec-head"><h1 class="sec-title">FFXIV</h1></div>
+      <div class="empty"><h3>${esc(t('xiv.none'))}</h3><p>${esc(t('xiv.empty'))}</p></div>`;
+    return;
+  }
+  const satir = (etiket, deger)=> nz(deger)
+    ? `<div class="xiv-row"><span>${esc(etiket)}</span><b>${esc(deger)}</b></div>` : '';
+
+  const sinifKutu = j=>`<div class="xiv-job ${j.level>=100?'max':''}">
+      <b>${esc(j.abbr)}</b><small>${j.level||'—'}</small></div>`;
+
+  el.innerHTML = `
+    <div class="sec-head">
+      <div>
+        <h1 class="sec-title">${esc(k.name)}</h1>
+        <div class="sec-meta">${esc([k.title, k.server, k.dc].filter(Boolean).join(' · '))}</div>
+      </div>
+      <button class="btn btn-sm" id="xivBack">← ${esc(t('nav.home'))}</button>
+    </div>
+
+    <div class="xiv-cols">
+      <div>
+        <div class="sub-h">${esc(t('xiv.profile'))}</div>
+        <div class="xiv-list">
+          ${satir(t('xiv.race'), [k.race, k.tribe].filter(Boolean).join(' · '))}
+          ${satir(t('xiv.guardian'), k.guardian)}
+          ${satir(t('xiv.town'), k.town)}
+          ${satir(t('xiv.gc'), [k.gc, k.gcRank].filter(Boolean).join(' — '))}
+          ${satir(t('xiv.fc'), k.fc)}
+          ${satir(t('xiv.hp'), k.hp && k.hp.toLocaleString(S.lang))}
+        </div>
+
+        ${(k.jobs&&k.jobs.length)?`<div class="sub-h">${esc(t('xiv.classes'))}</div>
+          <div class="xiv-jobs">${k.jobs.map(sinifKutu).join('')}</div>`:''}
+      </div>
+
+      <div>
+        ${k.portrait?`<img class="xiv-portrait" src="${esc(k.portrait)}" alt="">`:''}
+        <div class="xiv-stats">
+          ${[[XIV_ICONS.trophy, t('xiv.achievements'), k.achievements],
+             [XIV_ICONS.minion, t('xiv.minions'), k.minions],
+             [XIV_ICONS.mount, t('xiv.mounts'), k.mounts]]
+            .map(([ico,ad,n])=>`<div class="xiv-stat"><i class="xiv-ico">${ico}</i>
+               <b>${(n||0).toLocaleString(S.lang)}</b><small>${esc(ad)}</small></div>`).join('')}
+        </div>
+      </div>
+
+      <div>
+        ${(k.attributes&&k.attributes.length)?`<div class="sub-h">${esc(t('xiv.attributes'))}</div>
+          <div class="xiv-list">${k.attributes.map(a=>
+            `<div class="xiv-row"><span>${esc(a.name)}</span><b>${Number(a.value).toLocaleString(S.lang)}</b></div>`
+          ).join('')}</div>`:''}
+      </div>
+    </div>
+
+    <p class="mono muted" style="font-size:10.5px;margin-top:26px">
+      ${esc(t('xiv.source'))}: ${esc((k.sources||[]).join(', ')||'—')} ·
+      ${esc(new Date(k.fetched||Date.now()).toLocaleString(S.lang))} ·
+      <a href="https://na.finalfantasyxiv.com/lodestone/character/${esc(k.id)}/" target="_blank" rel="noopener">Lodestone ↗</a>
+    </p>`;
+
+  $('#xivBack').onclick = ()=> go('home');
 }
 
 /* ---------- 8c. PLATFORM ACCOUNTS ------------------------------------ */
@@ -2501,6 +2709,35 @@ async function uploadCover(file){
 /* ---------- 12c. BAKIM PANELİ ---------------------------------------- */
 /* Sunucuda değil, tarayıcıda çalışan işler. Jikan Google'ı geri
    çevirdiği için MAL geçmişi buradan çekilmek zorunda. */
+const uyu = ms => new Promise(r=> setTimeout(r, ms));
+
+/* Jikan zaman zaman 429 (çok istek) ve 504 (MAL yanıt vermedi) dönüyor;
+   ikisi de geçici. Bekleyip yeniden deniyoruz, iki adres biçimini de. */
+async function jikanHistory(user, kind, yaz){
+  const adresler = [
+    `https://api.jikan.moe/v4/users/${encodeURIComponent(user)}/history/${kind}`,
+    `https://api.jikan.moe/v4/users/${encodeURIComponent(user)}/history?type=${kind}`
+  ];
+  const bekle = [4000, 10000, 20000, 30000];
+  let sonKod = 0;
+
+  for(let deneme=0; deneme<bekle.length; deneme++){
+    for(const url of adresler){
+      let res;
+      try{ res = await fetch(url); }
+      catch(e){ sonKod = 'network'; continue; }
+
+      if(res.ok) return await res.json();
+      sonKod = res.status;
+      if(res.status===404) throw new Error(t('job.malUser'));
+      if(res.status===400) continue;              // bu adres biçimi tutmadı, öbürünü dene
+    }
+    yaz(`   Jikan ${sonKod} — ${bekle[deneme]/1000}s ${t('job.retry')}`);
+    await uyu(bekle[deneme]);
+  }
+  throw new Error(`Jikan ${sonKod} — ${t('job.jikanDown')}`);
+}
+
 const CLIENT_JOBS = {
   syncMalHistory: async function(yaz){
     const user = (S.settings['MyAnimeList']||'').trim();
@@ -2509,9 +2746,7 @@ const CLIENT_JOBS = {
 
     for(const kind of ['anime','manga']){
       yaz(`${kind}: ${t('tools.running')}`);
-      const res = await fetch(`https://api.jikan.moe/v4/users/${encodeURIComponent(user)}/history/${kind}`);
-      if(!res.ok) throw new Error(`Jikan ${res.status}`);
-      const j = await res.json();
+      const j = await jikanHistory(user, kind, yaz);
       const rows = (j.data||[]).map(x=>({
         Section: kind,
         'MAL ID': x.entry && x.entry.mal_id,
@@ -2525,7 +2760,7 @@ const CLIENT_JOBS = {
         const out = await API.post('history', {rows});
         eklenen += out.added || 0;
       }
-      await new Promise(r=> setTimeout(r, 1200));   // Jikan'ı yormayalım
+      await uyu(1500);
     }
     return {done:eklenen, blank:Math.max(0, okunan-eklenen), skipped:0, ranOut:false};
   }
@@ -2533,7 +2768,7 @@ const CLIENT_JOBS = {
 
 const JOBS = ['syncMalHistory','fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
               'fillBookCovers','fillGameGenres','fillAuthorPhotos','fillPlatformIcons',
-              'rehostCovers','backfillIds',
+              'fillFfxiv','rehostCovers','backfillIds',
               'diagnose','freezeReport'];
 let JOB_BUSY = false;
 
@@ -3165,7 +3400,7 @@ async function bootData(){
   API.restoreCache() || API.loadLocal();
 
   const hash = (location.hash||'').slice(1);
-  go(SEC_IDS.includes(hash)||hash==='stats'||hash==='home' ? hash : 'home');
+  go(SEC_IDS.includes(hash)||hash==='stats'||hash==='home'||hash==='ffxiv' ? hash : 'home');
 
   splash(t('splash.read'), 60);
   await bootData();
