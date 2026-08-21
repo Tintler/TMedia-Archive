@@ -574,13 +574,27 @@ tbody tr:last-child td{border-bottom:none}
 }
 .rp b{font-family:var(--display);font-size:17px;font-weight:700;color:var(--paper);letter-spacing:-.02em}
 
-/* ---- sıralı liste (yazarlar) ---- */
-.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.rank li{display:grid;grid-template-columns:minmax(0,1fr) 90px 34px;align-items:center;gap:12px}
-.rank-name{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rank-bar{height:6px;background:var(--edge);border-radius:3px;overflow:hidden}
-.rank-bar i{display:block;height:100%;background:var(--indigo)}
-.rank-n{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--paper);text-align:right}
+/* ---- en çok okunan yazarlar ---- */
+.author-list{list-style:none;margin:0;padding:0}
+.author-list li{
+  display:flex;align-items:center;gap:14px;padding:11px 0;
+  border-bottom:1px solid var(--edge-soft);
+}
+.author-list li:last-child{border-bottom:none}
+.author-list img,.au-blank{
+  width:42px;height:58px;border-radius:6px;object-fit:cover;flex-shrink:0;
+  background:var(--panel-2);
+}
+.au-blank{
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:800;font-size:14px;color:var(--muted-2);
+}
+.au-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.au-text b{
+  font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.02em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.au-text small{font-family:var(--mono);font-size:11.5px;color:var(--muted-2);letter-spacing:.06em}
 
 /* ---- en çok sahip olunan seri ---- */
 .fr-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -821,14 +835,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbzMoQ041anEJrTTporS7toi0NAzNAgMVF_9Ahn-_8pPWsdPhZ2-f49EWnVhnV7bGRHN/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyqzutmqoHdtW2ogC-7mpEWvq_0_2JQxykzzU1R1BlBLN6FFcyyek3gP7FqDQp1KNqQ-g/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-20-v2';
+const NEEDS_SERVER = '2026-08-20-v3';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-20-v2';
+const APP_VERSION = '2026-08-20-v3';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -900,6 +914,8 @@ const SECTIONS = {
     progress:{cur:'Watched Episodes', total:'Total Episodes'},
     imported:['MAL ID','Title','Type','Total Episodes','Watched Episodes','Score','Status','Start Date','Finish Date','Times Watched','Rewatching','Priority','Tags','Comments'],
     local:[...LOCAL_COMMON],
+    /* Ziyaretçiye gösterilmeyen, yalnızca senin işine yarayan alanlar. */
+    hidePublic:['Times Watched','Rewatching','Priority'],
     defaultCols:['Cover','Title','Type','Watched Episodes','Total Episodes','Score','Status','Finish Date'],
     startFilters:{'Status':'Completed'}, startSort:{by:'Score', dir:-1},
     top:['Status','Watched Episodes','Total Episodes'],
@@ -920,6 +936,7 @@ const SECTIONS = {
     progress:{cur:'Read Chapters', total:'Total Chapters'},
     imported:['MAL ID','Title','Total Volumes','Total Chapters','Read Volumes','Read Chapters','Score','Status','Start Date','Finish Date','Times Read','Rereading','Priority','Tags','Comments'],
     local:[...LOCAL_COMMON],
+    hidePublic:['Times Read','Rereading','Priority'],
     defaultCols:['Cover','Title','Read Chapters','Total Chapters','Read Volumes','Score','Status'],
     startFilters:{}, startSort:{by:'Score', dir:-1},
     top:['Status','Read Chapters','Read Volumes'],
@@ -962,7 +979,7 @@ const SECTIONS = {
     fillOnImport:['Cover'],
     defaultCols:['Cover','Title','Author','Pages','Page','My Rating','Shelf','Date Read'],
     startFilters:{'Shelf':'Completed'}, startSort:{by:'My Rating', dir:-1},
-    top:['Shelf','Page'],
+    top:['Shelf'],
     charts:['scores','status','genres'],
     filters:[
       {f:'Shelf',t:'select'},{f:'Author',t:'select'},{f:'Genres',t:'multi'},
@@ -980,6 +997,7 @@ for (const id of SEC_IDS){
   s.fillOnImport = s.fillOnImport || [];             // ...unless the cell is still empty
   s.freezeOnUpdate = s.freezeOnUpdate || [];         // written once, never refreshed
   s.freezeWhen = s.freezeWhen || [];                 // ...or only in certain states
+  s.hidePublic = s.hidePublic || [];                 // ziyaretçiye kapalı alanlar
 }
 
 /* Accounts shown on the home page. Usernames live in the Sheet's settings;
@@ -1068,7 +1086,7 @@ const I18N = {
     'c.byTheme':'Themes by completion','c.franchise':'Most owned franchise',
     'c.franchiseNone':'Run “Game genres, themes and series” from Tools to fill this in.',
     'c.titles':'titles',
-    'c.authors':'Most read authors','c.authorsNote':'Counting books you finished.',
+    'c.authors':'Most read authors',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
     'd.notes':'Notes','d.fav':'Favourite','d.status':'Status','d.edit':'Edit','d.saved':'Saved',
@@ -1149,7 +1167,7 @@ const I18N = {
     'c.byTheme':'Temaya göre tamamlanma','c.franchise':'En çok sahip olunan seri',
     'c.franchiseNone':'Araçlar’dan “Oyun türleri, temaları ve serileri”ni çalıştırınca dolar.',
     'c.titles':'oyun',
-    'c.authors':'En çok okunan yazarlar','c.authorsNote':'Bitirdiğin kitaplar sayılıyor.',
+    'c.authors':'En çok okunan yazarlar',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
     'd.notes':'Notlar','d.fav':'Favori','d.status':'Durum','d.edit':'Düzenle','d.saved':'Kaydedildi',
@@ -2127,7 +2145,7 @@ function openDetail(secId, rec, isNew){
         `<div class="field ${/comment|review|description|notes/i.test(c)?'wide':''}"><label>${esc(c)}${isMinuteField(secId,c)?' — min':''}</label>
          <input type="text" data-k="${esc(c)}" value="${esc(r[c]||'')}">
          ${isMinuteField(secId,c)?`<span class="mono muted" style="font-size:10.5px">= ${esc(fmtHours(r[c]))}</span>`:''}</div>`).join('')}</div>`
-    : `<dl class="kv">${detayAlanlari.filter(c=> !topKeys.includes(c) && nz(r[c])).map(c=>
+    : `<dl class="kv">${detayAlanlari.filter(c=> !topKeys.includes(c) && !s.hidePublic.includes(c) && nz(r[c])).map(c=>
         `<dt>${esc(colLabel(secId,c))}</dt><dd>${esc(fmtCell(secId,c,r[c]))}</dd>`).join('')}</dl>`;
 
   /* Elle kayıt eklerken kaynaktan doldurma paneli. IGDB ya da OMDb
@@ -2142,7 +2160,9 @@ function openDetail(secId, rec, isNew){
        <div id="lkResults"></div>`
     : '';
 
-  const progressBlock = tops.length
+  /* Ziyaretçide blok tamamen boşsa hiç gösterme. */
+  const topDolu = tops.some(f=> nz(r[f.k]));
+  const progressBlock = (tops.length && (S.auth || topDolu))
     ? `<div class="sub-h">${esc(t('d.progressBlock'))}</div><div class="form-grid">${topHTML}</div>`
     : '';
 
@@ -2762,15 +2782,28 @@ function authorPanel(){
   const top = topN(countBy(kaynak, r=> String(r.Author||'').trim()), 5);
   if(!top.length) return '';
 
-  const enCok = top[0][1] || 1;
+  /* Yazar fotoğrafımız yok; o yazarın en yüksek puanlı kitabının kapağını
+     kullanmak hem tanıdık hem de sayfanın diline uyuyor. */
+  const kapakBul = ad => {
+    const kitap = kaynak
+      .filter(r=> String(r.Author||'').trim()===ad && nz(r.Cover))
+      .sort((a,b)=> compareCells(a['My Rating'], b['My Rating'], -1))[0];
+    return kitap ? kitap.Cover : '';
+  };
+
   return `<div class="chart-card"><h4>${esc(t('c.authors'))}</h4>
-    <ol class="rank">${top.map(([ad,n])=>`
-      <li>
-        <span class="rank-name">${esc(ad)}</span>
-        <span class="rank-bar"><i style="width:${Math.round(n/enCok*100)}%"></i></span>
-        <span class="rank-n">${n}</span>
-      </li>`).join('')}</ol>
-    <p class="mono muted" style="font-size:10.5px;margin:12px 0 0">${esc(t('c.authorsNote'))}</p>
+    <ol class="author-list">${top.map(([ad,n])=>{
+      const k = kapakBul(ad);
+      const th = k ? `<img src="${esc(k)}" alt="" loading="lazy">`
+                   : `<span class="au-blank">${esc(initials(ad))}</span>`;
+      return `<li>
+        ${th}
+        <span class="au-text">
+          <b>${esc(ad)}</b>
+          <small>${n} ${esc(t('unit.books'))}</small>
+        </span>
+      </li>`;
+    }).join('')}</ol>
   </div>`;
 }
 
