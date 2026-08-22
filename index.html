@@ -988,14 +988,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxbUgIw6pzFSSlbHTgv1d6QR8eZvSRhrY514kj1i0xTR-b68DxGQHVNvZtkBXu2H5b6zQ/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxteuQwbTJwOomYWFTsZxI6U6a3XT4fMlk4l8ScK5wNfoBQBpJ0tAeFx9BoueW4XBqrFg/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-22-v24';
+const NEEDS_SERVER = '2026-08-22-v26';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-22-v25';
+const APP_VERSION = '2026-08-22-v26';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1026,7 +1026,11 @@ const STATUS_SETS = {
   },
   anime: {field:'Status', options:['Watching','Completed','On-Hold','Dropped','Plan to Watch']},
   manga: {field:'Status', options:['Reading','Completed','On-Hold','Dropped','Plan to Read']},
-  books: {field:'Shelf', options:['Reading','Completed','On hold','Dropped','Plan to read']}
+  books: {field:'Shelf', options:['Reading','Completed','On hold','Dropped','Plan to read']},
+  /* IMDb'de izleme durumu yok; bu alan elle işaretleniyor ve tek işi diziyi
+     ana sayfadaki "şu anda izliyorum" listesine sokmak. O yüzden tek seçenek
+     var, boşaltmak da '—' ile yapılıyor. */
+  screen: {field:'Watching', options:['Watching']}
 };
 
 const SECTIONS = {
@@ -1106,10 +1110,12 @@ const SECTIONS = {
     title:'Title', sub:'Title Type', score:'Your Rating', scoreMax:10,
     status:'', year:'Year', added:'Date Rated',
     imported:['Const','Title','Original Title','Title Type','Year','Genres','Directors','Runtime (mins)','IMDb Rating','Num Votes','Your Rating','Date Rated','Release Date','URL','Description','Position','Created','Modified'],
-    local:['Cover','Season','Episode','Favorite','Notes'],
+    local:['Cover','Season','Episode','Watching','Favorite','Notes'],
+    /* Ziyaretçiye kapalı: bu benim takip işaretim, herkese açık bir bilgi değil. */
+    hidePublic:['Watching'],
     defaultCols:['Cover','Title','Title Type','Year','Genres','Season','Episode','Your Rating','IMDb Rating'],
     startFilters:{}, startSort:{by:'Your Rating', dir:-1},
-    top:['Season','Episode'],
+    top:['Watching','Season','Episode'],
     charts:['scores','year','genres'],
     filters:[
       {f:'Title Type',t:'select'},{f:'Genres',t:'multi'},
@@ -1215,6 +1221,7 @@ const I18N = {
     'home.chapters':'Chapters read (Manga)','home.pages':'Pages read (Books)',
     'home.playing1':'Currently','home.playing2':'playing',
     'home.now.anime1':'Currently','home.now.anime2':'watching',
+    'd.nowWatching':'Currently watching',
     'home.now.manga1':'Reading','home.now.manga2':'manga',
     'home.now.books1':'Reading','home.now.books2':'books',
     'home.feed':'Activity','home.profiles':'Profiles','home.noFeed':'Nothing here yet.',
@@ -1324,6 +1331,7 @@ const I18N = {
     'home.chapters':'Okunan bölüm (Manga)','home.pages':'Okunan sayfa (Kitap)',
     'home.playing1':'Şu anda','home.playing2':'oynuyorum',
     'home.now.anime1':'Şu anda','home.now.anime2':'izliyorum',
+    'd.nowWatching':'Şu anda izliyorum',
     'home.now.manga1':'Manga','home.now.manga2':'okuyorum',
     'home.now.books1':'Kitap','home.now.books2':'okuyorum',
     'home.feed':'Akış','home.profiles':'Hesaplarım','home.noFeed':'Burada henüz bir şey yok.',
@@ -1962,12 +1970,25 @@ function renderHome(){
    Dört bölüm de aynı kalıptan çiziliyor. Durum alanı bölümden bölüme
    değişiyor (oyunda 'Status', kitapta 'Shelf'), o yüzden STATUS_SETS'ten
    okunuyor — burada ikinci bir liste tutmak ikisinin ayrışmasına yol açardı. */
+/* Bir blok birden çok bölümden beslenebiliyor: "şu anda izliyorum" hem
+   animeleri hem elle işaretlenmiş dizileri topluyor. Tarih alanı bölüme göre
+   değiştiği için liste halinde veriliyor, ilk dolu olan kullanılıyor. */
 const NOW_ROWS = [
-  {sec:'games', deger:'playing',  tarih:'Last updated', h1:'home.playing1',   h2:'home.playing2'},
-  {sec:'anime', deger:'watching', tarih:'Start Date',   h1:'home.now.anime1', h2:'home.now.anime2'},
-  {sec:'manga', deger:'reading',  tarih:'Start Date',   h1:'home.now.manga1', h2:'home.now.manga2'},
-  {sec:'books', deger:'reading',  tarih:'Date Read',    h1:'home.now.books1', h2:'home.now.books2'}
+  {h1:'home.playing1', h2:'home.playing2', kaynak:[
+    {sec:'games', deger:'playing',  tarih:['Last updated','Date added']}]},
+  {h1:'home.now.anime1', h2:'home.now.anime2', kaynak:[
+    {sec:'anime',  deger:'watching', tarih:['Start Date']},
+    {sec:'screen', deger:'watching', tarih:['Modified','Date Rated','Created']}]},
+  {h1:'home.now.manga1', h2:'home.now.manga2', kaynak:[
+    {sec:'manga', deger:'reading', tarih:['Start Date']}]},
+  {h1:'home.now.books1', h2:'home.now.books2', kaynak:[
+    {sec:'books', deger:'reading', tarih:['Date Read']}]}
 ];
+
+const ilkDolu = (r, alanlar)=>{
+  for(const a of alanlar) if(nz(r[a])) return r[a];
+  return '';
+};
 
 /* İki kayda kadar başlık ve alt bilgi var; ızgara HER ZAMAN iki sütun kalır,
    yani tek kayıt da iki kayıtlı görünümdeki bir kart kadar yer kaplar.
@@ -1983,18 +2004,23 @@ function renderNow(){
   if(!kutu) return;
 
   kutu.innerHTML = NOW_ROWS.map(cfg=>{
-    const alan = (STATUS_SETS[cfg.sec]||{}).field;
-    const liste = (S.data[cfg.sec]||[])
-      .filter(r=> String(r[alan]||'').trim().toLowerCase() === cfg.deger)
-      .sort((a,b)=> compareCells(a[cfg.tarih], b[cfg.tarih], -1));
+    const liste = [];
+    cfg.kaynak.forEach(k=>{
+      const alan = (STATUS_SETS[k.sec]||{}).field;
+      if(!alan) return;
+      (S.data[k.sec]||[])
+        .filter(r=> String(r[alan]||'').trim().toLowerCase() === k.deger)
+        .forEach(r=> liste.push({sec:k.sec, r, tarih:ilkDolu(r, k.tarih)}));
+    });
     if(!liste.length) return '';
+    liste.sort((a,b)=> compareCells(a.tarih, b.tarih, -1));
 
     const sik = liste.length > NOW_COLS;
     const sutun = sik ? Math.min(liste.length, NOW_MAX_COLS) : NOW_COLS;
     return `<section class="playing">
       <h2 class="playing-h"><span>${esc(t(cfg.h1))}</span> <em>${esc(t(cfg.h2))}</em></h2>
       <div class="playing-row${sik?' compact':''}" style="grid-template-columns:repeat(${sutun},1fr)">
-        ${liste.map(r=> nowCard(cfg.sec, r, sik)).join('')}
+        ${liste.map(x=> nowCard(x.sec, x.r, sik)).join('')}
       </div>
     </section>`;
   }).join('');
@@ -2035,6 +2061,11 @@ function nowSub(secId, r){
     /* Sayfa takibi çoğu kayıtta boş; boşsa yalnızca yazar yazsın. */
     const cur = numOf(r.Page)||0, tot = numOf(r.Pages)||0;
     return [r.Author||'', (cur>0 && tot>0) ? `${cur} / ${tot}` : ''].filter(Boolean).join(' · ');
+  }
+  if(secId==='screen'){
+    return [r['Title Type']||'',
+            nz(r.Season)  ? 'S'+r.Season  : '',
+            nz(r.Episode) ? 'E'+r.Episode : ''].filter(Boolean).join(' · ');
   }
   return cardSub(secId, r);
 }
@@ -2651,7 +2682,10 @@ function topFields(secId, rec){
     return out;
   (s.top||[]).forEach(k=>{
     if(set && k===set.field){
-      out.push({k, label:t('d.status'), type:'status'});
+      /* Film/dizideki işaret bir durum değil, kişisel bir takip anahtarı:
+         ziyaretçiye hiç gösterilmiyor. */
+      if(secId==='screen' && !S.auth) return;
+      out.push({k, label: secId==='screen' ? t('d.nowWatching') : t('d.status'), type:'status'});
     }else if(set && set.dependent && k===set.dependent.field){
       out.push({k, label:t('d.completion'), type:'dependent'});
     }else{
