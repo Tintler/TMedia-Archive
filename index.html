@@ -995,7 +995,7 @@ const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxteuQwbTJwOomYWFTs
 const NEEDS_SERVER = '2026-08-22-v26';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-22-v26';
+const APP_VERSION = '2026-08-22-v27';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -2079,8 +2079,11 @@ const FEED_DATES = {
   screen: ['Modified','Date Rated','Created'],
   books:  ['Date Read','Date Added']
 };
-const FEED_STEP = 10;
-let feedShown = FEED_STEP;
+/* Açılışta 20 kayıt görünüyor; "daha fazla" her basışta 10 ekliyor.
+   İlk dolum ile adım ayrı büyüklükler, o yüzden iki ayrı sabit. */
+const FEED_FIRST = 20;
+const FEED_STEP  = 10;
+let feedShown = FEED_FIRST;
 /* Sheet'te o sütun hangi biçimde duruyorsa yeni kayıtta da öyle yazılsın. */
 const FEED_DATE_STYLE = {games:'iso', anime:'day', manga:'day', screen:'day', books:'day'};
 function nowFor(secId){
