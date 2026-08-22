@@ -966,14 +966,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwRuSU_KT7qcBQQ690vetiDppKOpvX1jMZYOFvgU-f6b80EGsO2Ivokgl9FRlFHI6R_MA/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwrheauQrHqIvuti44gBcFmdJeWiBRybrTW7TsUbTXx2fpxVJcs6lYW21wGm25VdHdfSw/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v19';
+const NEEDS_SERVER = '2026-08-21-v20';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v19';
+const APP_VERSION = '2026-08-21-v20';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1024,7 +1024,8 @@ const SECTIONS = {
     startFilters:{'Status':'Played'}, startSort:{by:'Rating (Score)', dir:-1},
     /* Bitmiş bir oyunun damgası dışa aktarımlarda boşuna tazelenmesin;
        hâlâ oynananlarda güncellensin. */
-    freezeWhen:[{column:'Last updated', field:'Status', equals:['Played'], unlessChanged:['Status','Completion']}],
+    freezeWhen:[{column:'Last updated', field:'Status', equals:['Played'],
+                 unlessChanged:['Status','Completion']}],
     top:['Status','Completion'],
     filters:[
       {f:'Platform',t:'select'},{f:'Status',t:'select'},{f:'Completion',t:'select'},
@@ -1678,17 +1679,17 @@ const API = {
         const k = keyOf(inc), cur = map.get(k);
         if(cur){
           const donmus = new Set(sec.freezeOnUpdate);
-          sec.freezeWhen.forEach(k=>{
-            const curVal = String(cur[k.field] || '').trim();
-            let uyar = k.equals.some(x=> x.toLowerCase() === curVal.toLowerCase());
-            if(uyar && k.unlessChanged){
-              const degisti = k.unlessChanged.some(alan => {
-                if(inc[alan] === undefined) return false;
-                return String(inc[alan] || '').trim() !== String(cur[alan] || '').trim();
-              });
+          sec.freezeWhen.forEach(kural=>{
+            const v = String((inc[kural.field]!==undefined ? inc[kural.field] : cur[kural.field]) || '').trim();
+            let uyar = kural.equals.some(x=> x.toLowerCase()===v.toLowerCase());
+            /* İzlenen alanlardan biri değiştiyse koruma iptal. */
+            if(uyar && kural.unlessChanged){
+              const degisti = kural.unlessChanged.some(alan=>
+                inc[alan]!==undefined &&
+                String(inc[alan]||'').trim() !== String(cur[alan]||'').trim());
               if(degisti) uyar = false;
             }
-            if(uyar) donmus.add(k.column);
+            if(uyar) donmus.add(kural.column);
           });
           sec.imported.forEach(c=>{
             if(donmus.has(c)) return;
@@ -3175,8 +3176,10 @@ async function runImport(){
       const res = await API.post('import', {
         section:secId, sheet:s.sheet, columns:s.columns,
         key:s.key, protect:s.protect, importable:s.imported,
-        fillIfEmpty:s.fillOnImport, freezeOnUpdate:s.freezeOnUpdate,
-        freezeWhen:s.freezeWhen, rows:slice
+        /* freezeWhen GÖNDERİLMİYOR: koşullu koruma kuralı yalnızca
+           Code.gs'te duruyor. İkisini birden göndermek, eski bir istemci
+           sürümünün sunucudaki kuralı ezmesine yol açıyordu. */
+        fillIfEmpty:s.fillOnImport, freezeOnUpdate:s.freezeOnUpdate, rows:slice
       });
       added += res.added||0; updated += res.updated||0; frozen += res.frozen||0;
       bar.style.width = Math.round(Math.min(i+CHUNK,total)/total*100)+'%';
