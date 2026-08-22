@@ -995,7 +995,7 @@ const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxbUgIw6pzFSSlbHTgv
 const NEEDS_SERVER = '2026-08-22-v24';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-22-v24';
+const APP_VERSION = '2026-08-22-v25';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1969,10 +1969,13 @@ const NOW_ROWS = [
   {sec:'books', deger:'reading',  tarih:'Date Read',    h1:'home.now.books1', h2:'home.now.books2'}
 ];
 
-/* İki kayda kadar başlık ve alt bilgi var. Daha fazlasında yalnızca kapak
-   kalıyor ve sütun sayısı arttığı için kapaklar kendiliğinden küçülüyor;
-   böylece blok iki kayıtlıkken kapladığı alanı aşmıyor. Altı sütundan
-   sonrası okunmaz hale geldiği için satır kırılıyor. */
+/* İki kayda kadar başlık ve alt bilgi var; ızgara HER ZAMAN iki sütun kalır,
+   yani tek kayıt da iki kayıtlı görünümdeki bir kart kadar yer kaplar.
+   (Sütunu kayıt sayısına eşitlemek tek kaydı tüm genişliğe yayıyordu.)
+   Üç ve üstünde başlıklar düşüyor, sütun sayısı arttığı için kapaklar
+   kendiliğinden küçülüyor; blok iki kayıtlıkken kapladığı alanı aşmıyor.
+   Altı sütundan sonrası okunmaz hale geldiği için satır kırılıyor. */
+const NOW_COLS = 2;
 const NOW_MAX_COLS = 6;
 
 function renderNow(){
@@ -1986,8 +1989,8 @@ function renderNow(){
       .sort((a,b)=> compareCells(a[cfg.tarih], b[cfg.tarih], -1));
     if(!liste.length) return '';
 
-    const sik = liste.length > 2;
-    const sutun = Math.min(liste.length, sik ? NOW_MAX_COLS : 2);
+    const sik = liste.length > NOW_COLS;
+    const sutun = sik ? Math.min(liste.length, NOW_MAX_COLS) : NOW_COLS;
     return `<section class="playing">
       <h2 class="playing-h"><span>${esc(t(cfg.h1))}</span> <em>${esc(t(cfg.h2))}</em></h2>
       <div class="playing-row${sik?' compact':''}" style="grid-template-columns:repeat(${sutun},1fr)">
