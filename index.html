@@ -357,6 +357,11 @@ tbody tr:last-child td{border-bottom:none}
 }
 .stepper button:hover{background:var(--panel-2);color:var(--brass)}
 .stepper input{width:70px;text-align:center;font-family:var(--mono)}
+/* Tarayıcının kendi yukarı/aşağı okları − ve + düğmelerinin yanında
+   fazlalık duruyor; sayıyı yine elle yazabiliyoruz. */
+.stepper input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.stepper input[type=number]::-webkit-outer-spin-button,
+.stepper input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .section-hint{
   font-size:12.5px;color:var(--muted);background:var(--panel);border-left:2px solid var(--brass);
   padding:10px 12px;border-radius:0 var(--r-sm) var(--r-sm) 0;margin:0 0 16px;
@@ -573,6 +578,21 @@ tbody tr:last-child td{border-bottom:none}
   color:var(--muted);margin-left:6px;
 }
 .rating-extra{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.rating-pick{
+  font-family:var(--display);font-weight:800;font-size:clamp(34px,5vw,48px);
+  line-height:1;color:var(--brass);background:var(--panel-2);
+  border:1px solid var(--line);border-radius:10px;padding:2px 10px;cursor:pointer;
+}
+.rating-pick:hover{border-color:var(--brass)}
+.rating-pick option{font-family:var(--sans);font-size:15px;color:var(--fg);background:var(--panel)}
+.lk-src{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.lk-src-btn{
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+  padding:6px 11px;border-radius:999px;cursor:pointer;
+  background:var(--panel-2);color:var(--muted);border:1px solid var(--line);
+}
+.lk-src-btn:hover{color:var(--fg);border-color:var(--muted-2)}
+.lk-src-btn.on{background:var(--brass);color:#1a1a1a;border-color:var(--brass);font-weight:700}
 .rp{
   display:flex;flex-direction:column;gap:2px;padding:7px 12px;border-radius:var(--r-sm);
   background:var(--panel);border:1px solid var(--edge-soft);
@@ -966,14 +986,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwFDbpzY1QA5FvORhscT7i2gII5KcZx0T4dBE981tXJXw4q1XUjEm5DJi55ycfKTj7Nug/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwW2DRILVJYrKJ3fKUtGrJE6x2wG3aNDW8OYrODubdODMMSN2ikgJJjQLISGcl02GFk3A/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-22-v21';
+const NEEDS_SERVER = '2026-08-22-v22';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-22-v21';
+const APP_VERSION = '2026-08-22-v22';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1258,10 +1278,14 @@ const I18N = {
     'd.completion':'Completion','d.pickStatus':'Choose a status first',
     'd.progressBlock':'Status & progress',
     'lk.title':'Look it up','lk.ph':'Type a title and search',
-    'lk.ph.books':'Title, or paste a 1000Kitap link',
-    'lk.hint.books':'Searches 1000Kitap first, so the book keeps its Book Id and a later import updates this row instead of adding a second one. Pasting the 1000Kitap address is the surest way. Google Books and Open Library are fallbacks — those ids will not match an import.',
+    'lk.src.k1link':'1000Kitap link','lk.src.k1search':'1000Kitap search',
+    'lk.src.openlib':'Open Library','lk.src.google':'Google Books',
+    'lk.ph.k1link':'Paste the 1000Kitap address of the book',
+    'lk.ph.k1search':'Search 1000Kitap by title',
+    'lk.ph.openlib':'Search Open Library by title',
+    'lk.ph.google':'Search Google Books by title',
+    'd.rate':'Your rating','d.rateNone':'No rating',
     'lk.go':'Search','lk.none':'Nothing found','lk.searching':'Searching…',
-    'lk.hint':'Optional. Fill the fields from the source, then edit anything you like — or skip this and type everything by hand.',
     'lk.filled':'Fields filled from the source',
     'd.myRating':'Your rating','d.noRating':'Not rated yet','d.votes':'votes',
     tools:'Tools','tools.title':'Maintenance',
@@ -1369,10 +1393,14 @@ const I18N = {
     'd.completion':'Tamamlanma','d.pickStatus':'Önce bir durum seç',
     'd.progressBlock':'Durum ve ilerleme',
     'lk.title':'Kaynaktan bul','lk.ph':'Adını yaz ve ara',
-    'lk.ph.books':'Kitap adı ya da 1000Kitap adresi',
-    'lk.hint.books':'Önce 1000Kitap\'a bakar; böylece kitabın Book Id\'si doğru olur ve sonraki içe aktarma bu satırı günceller, ikinci satır açmaz. En garantisi kitabın 1000Kitap adresini yapıştırmak. Google Books ve Open Library yedektir — onların numarası içe aktarmayla eşleşmez.',
+    'lk.src.k1link':'1000Kitap linki','lk.src.k1search':'1000Kitap arama',
+    'lk.src.openlib':'Open Library','lk.src.google':'Google Books',
+    'lk.ph.k1link':'Kitabın 1000Kitap adresini yapıştır',
+    'lk.ph.k1search':'1000Kitap\'ta adıyla ara',
+    'lk.ph.openlib':'Open Library\'de adıyla ara',
+    'lk.ph.google':'Google Books\'ta adıyla ara',
+    'd.rate':'Puanın','d.rateNone':'Puan yok',
     'lk.go':'Ara','lk.none':'Sonuç yok','lk.searching':'Aranıyor…',
-    'lk.hint':'İsteğe bağlı. Alanları kaynaktan doldurur, sonra dilediğini değiştirirsin — ya da hiç kullanmadan elle yazarsın.',
     'lk.filled':'Alanlar kaynaktan dolduruldu',
     'd.myRating':'Verdiğin puan','d.noRating':'Henüz puanlanmadı','d.votes':'oy',
     tools:'Araçlar','tools.title':'Bakım',
@@ -2528,6 +2556,17 @@ const EXTRA_RATINGS = {
   books:  []          // 1000Kitap'ın ortalaması değil, senin puanın gösterilir
 };
 
+/* 1..10 tamsayı. Sheet'te bunun dışında bir değer varsa (eski içe
+   aktarımlardan gelen 8.5 gibi) onu da listeye koyuyoruz, yoksa kaydetmek
+   sessizce puanı değiştirirdi. */
+function puanSecenekleri(secId, mevcut){
+  const liste = [];
+  for(let i=1;i<=10;i++) liste.push(String(i));
+  const cur = String(mevcut==null?'':mevcut).trim();
+  if(cur && !liste.includes(cur)) liste.unshift(cur);
+  return liste;
+}
+
 /* Kayıt panelinde kapağın yanındaki büyük puan. */
 function ratingBlock(secId, r){
   const s = SECTIONS[secId];
@@ -2538,12 +2577,23 @@ function ratingBlock(secId, r){
   if(secId==='screen' && numOf(r['Num Votes'])>0)
     extras.push(`<span class="rp"><b>${numOf(r['Num Votes']).toLocaleString(S.lang)}</b>${esc(t('d.votes'))}</span>`);
 
+  /* Giriş yapılmışsa puan buradan veriliyor; alt taraftaki metin kutusu
+     kaldırıldı, iki yerde aynı alanı düzenlemek karışıklık yaratıyordu.
+     Kayıt sırasında collectDetail bu select'i data-k üzerinden topluyor. */
+  const secim = S.auth
+    ? `<select class="rating-pick" data-k="${esc(s.score)}" id="dtScore">
+         <option value="" ${v>0?'':'selected'}>—</option>
+         ${puanSecenekleri(secId, r[s.score]).map(o=>
+            `<option value="${esc(o)}" ${String(r[s.score]).trim()===String(o)?'selected':''}>${esc(o)}</option>`
+          ).join('')}
+       </select>
+       <span class="rating-max">/ ${s.scoreMax}</span>`
+    : `<span class="rating-num">${v>0?esc(v):'—'}</span>
+       <span class="rating-max">/ ${s.scoreMax}</span>
+       ${v>0?'':`<span class="rating-lbl">${esc(t('d.noRating'))}</span>`}`;
+
   return `<div class="rating-wrap">
-    <div class="rating-main ${v>0?'':'none'}">
-      <span class="rating-num">${v>0?esc(v):'—'}</span>
-      <span class="rating-max">/ ${s.scoreMax}</span>
-      ${v>0?'':`<span class="rating-lbl">${esc(t('d.noRating'))}</span>`}
-    </div>
+    <div class="rating-main ${(v>0||S.auth)?'':'none'}">${secim}</div>
     ${extras.length?`<div class="rating-extra">${extras.join('')}</div>`:''}
   </div>`;
 }
@@ -2630,7 +2680,9 @@ function openDetail(secId, rec, isNew){
       </div></div>`;
   }).join('');
 
-  const topKeys = tops.map(f=>f.k);
+  /* Puan artık yukarıdaki büyük alandan giriliyor; aşağıda ikinci bir
+     kopyası olmasın. */
+  const topKeys = tops.map(f=>f.k).concat([s.score]);
   const detayAlanlari = s.imported.concat(s.showLocal||[]);
   const importedHTML = S.auth
     ? `<div class="form-grid">${detayAlanlari.filter(c=> !topKeys.includes(c)).map(c=>
@@ -2642,12 +2694,20 @@ function openDetail(secId, rec, isNew){
 
   /* Elle kayıt eklerken kaynaktan doldurma paneli. IGDB ya da OMDb
      kapanırsa panel çalışmaz ama form elle doldurulmaya devam eder. */
+  /* Kitaplarda kaynağı kullanıcı seçiyor. Otomatik sıra denemesi hangi
+     sonucun nereden geldiğini gizliyordu ve yanlış dilde baskı getirebiliyordu. */
+  const kaynakBtn = secId==='books'
+    ? `<div class="lk-src">${BOOK_SOURCES.map(k=>
+        `<button class="lk-src-btn ${LK.src===k.id?'on':''}" data-src="${k.id}">${esc(t(k.label))}</button>`
+       ).join('')}</div>`
+    : '';
+
   const lookupBlock = (isNew && S.auth && API.connected &&
                        (secId==='games' || secId==='screen' || secId==='books'))
     ? `<div class="sub-h">${esc(t('lk.title'))}</div>
-       <p class="section-hint">${esc(t(secId==='books' ? 'lk.hint.books' : 'lk.hint'))}</p>
+       ${kaynakBtn}
        <div style="display:flex;gap:8px;margin-bottom:12px">
-         <input type="text" id="lkQ" placeholder="${esc(t(secId==='books' ? 'lk.ph.books' : 'lk.ph'))}" style="flex:1">
+         <input type="text" id="lkQ" placeholder="${esc(lkPlaceholder(secId))}" style="flex:1">
          <button class="btn" id="lkGo">${esc(t('lk.go'))}</button>
        </div>
        <div id="lkResults"></div>`
@@ -2730,6 +2790,15 @@ function openDetail(secId, rec, isNew){
     lkGo.onclick = ara;
     $('#lkQ').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); ara(); } });
   }
+  $$('#dtBody .lk-src-btn').forEach(b=> b.onclick = ()=>{
+    LK.src = b.dataset.src;
+    LS.set('bookSrc', LK.src);
+    $$('#dtBody .lk-src-btn').forEach(x=> x.classList.toggle('on', x.dataset.src===LK.src));
+    const q = $('#lkQ');
+    q.placeholder = lkPlaceholder(secId);
+    $('#lkResults').innerHTML = '';
+    q.focus();
+  });
 
   const fb = $('#dtFetch');  if(fb) fb.onclick = fetchCover;
   const ub = $('#dtUpload'); if(ub) ub.onclick = ()=> $('#dtFile').click();
@@ -2781,7 +2850,22 @@ async function deleteDetail(){
 }
 
 /* ---------- 12b. ELLE EKLERKEN KAYNAKTAN DOLDURMA ------------------- */
-let LK = {results:[]};
+/* Kitap arama kaynakları. Sıra kasıtlı: doğru Book Id üreten yollar başta.
+   'k1link' sayfa okunamasa bile adresteki numarayı alır, o yüzden varsayılan. */
+const BOOK_SOURCES = [
+  {id:'k1link',   label:'lk.src.k1link'},
+  {id:'k1search', label:'lk.src.k1search'},
+  {id:'openlib',  label:'lk.src.openlib'},
+  {id:'google',   label:'lk.src.google'}
+];
+
+let LK = {results:[], src: LS.get('bookSrc','k1link')};
+if(!BOOK_SOURCES.some(k=> k.id===LK.src)) LK.src = 'k1link';
+
+function lkPlaceholder(secId){
+  if(secId!=='books') return t('lk.ph');
+  return t('lk.ph.' + LK.src);
+}
 
 async function runLookup(secId, q){
   q = String(q||'').trim();
@@ -2790,7 +2874,7 @@ async function runLookup(secId, q){
   box.innerHTML = `<p class="muted"><span class="spinner"></span> ${esc(t('lk.searching'))}</p>`;
   btn.disabled = true;
   try{
-    const res = await API.post('lookup', {section:secId, q});
+    const res = await API.post('lookup', {section:secId, q, src: secId==='books' ? LK.src : undefined});
     LK.results = res.results || [];
     if(!LK.results.length){ box.innerHTML = `<p class="muted">${esc(t('lk.none'))}</p>`; }
     else{
@@ -2798,9 +2882,10 @@ async function runLookup(secId, q){
         const alt = secId==='games'
           ? [x.year, (x.platforms||[]).slice(0,3).join(', ')].filter(Boolean).join(' · ')
           : secId==='books'
-            /* Kaynağı da yazıyoruz: 1000Kitap dışından gelen bir kayıt
-               ileride içe aktarmayla eşleşmez, bunu seçmeden görmek gerek. */
-            ? [x.author, x.year, x.publisher, x.source].filter(Boolean).join(' · ')
+            /* Kaynağı ve varsa baskı dilini de yazıyoruz: yanlış dildeki
+               baskıyı seçmeden fark etmek gerek. */
+            ? [x.author, x.year, x.publisher, x.lang && x.lang.toUpperCase(), x.source, x.note]
+                .filter(Boolean).join(' · ')
             : [x.year, x.kind].filter(Boolean).join(' · ');
         const th = x.cover
           ? `<img src="${esc(x.cover)}" alt="" loading="lazy">`
