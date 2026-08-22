@@ -986,14 +986,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwW2DRILVJYrKJ3fKUtGrJE6x2wG3aNDW8OYrODubdODMMSN2ikgJJjQLISGcl02GFk3A/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxlxmXbr71hppg9PRWI2u66vtk8yW7R0Bao0l2awqbwKa3czratQAfxCic2izu2cvIHnA/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-22-v22';
+const NEEDS_SERVER = '2026-08-22-v23';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-22-v22';
+const APP_VERSION = '2026-08-22-v23';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1251,8 +1251,8 @@ const I18N = {
     'job.fillFfxiv':'Final Fantasy XIV character — Lodestone',
     'job.dumpLodestone':'Lodestone page check (for troubleshooting)',
     'job.bookDupes':'Books — find likely duplicates',
-    'job.dump1000kitap':'1000Kitap search check (for troubleshooting)',
-    'job.askQuery':'Which title should it search for?',
+    'job.fillBookGenres':'Book genres — Google Books',
+    'job.askOverwrite':'Overwrite genres that are already filled?\n\nOK — rewrite every book (use this to make the language consistent)\nCancel — only fill the empty ones',
     'job.fixDateColumns':'Fix date columns — keep them as plain text',
     'xiv.profile':'Character profile','xiv.classes':'Classes','xiv.attributes':'Attributes',
     'xiv.race':'Race','xiv.guardian':'Guardian','xiv.town':'City-state',
@@ -1264,12 +1264,6 @@ const I18N = {
     'xiv.g.mental':'Mental properties','xiv.g.role':'Role','xiv.g.other':'Other',
     'xiv.source':'Source','xiv.none':'No character yet',
     'xiv.empty':'Run “Final Fantasy XIV character” from Tools to fill this in.',
-    'job.syncMalHistory':'MyAnimeList history — episodes and chapters',
-    'job.needMal':'Add your MyAnimeList username to Profiles on the home page first.',
-    'job.malUser':'MyAnimeList does not know that username — check Profiles on the home page.',
-    'job.retry':'waiting, then trying again',
-    'job.jikanDown':'the MyAnimeList API is not answering right now. Try again in a few minutes, or use mal-history.js from the browser console.',
-    'tools.read':'read',
     'd.details':'Details','d.progress':'Progress','d.myTrack':'My tracking','d.cover':'Cover image URL',
     'd.season':'Season','d.episode':'Episode','d.chapter':'Chapter','d.volume':'Volume','d.page':'Page',
     'd.notes':'Notes','d.fav':'Favourite','d.status':'Status','d.edit':'Edit','d.saved':'Saved',
@@ -1278,10 +1272,7 @@ const I18N = {
     'd.completion':'Completion','d.pickStatus':'Choose a status first',
     'd.progressBlock':'Status & progress',
     'lk.title':'Look it up','lk.ph':'Type a title and search',
-    'lk.src.k1link':'1000Kitap link','lk.src.k1search':'1000Kitap search',
     'lk.src.openlib':'Open Library','lk.src.google':'Google Books',
-    'lk.ph.k1link':'Paste the 1000Kitap address of the book',
-    'lk.ph.k1search':'Search 1000Kitap by title',
     'lk.ph.openlib':'Search Open Library by title',
     'lk.ph.google':'Search Google Books by title',
     'd.rate':'Your rating','d.rateNone':'No rating',
@@ -1366,8 +1357,8 @@ const I18N = {
     'job.fillFfxiv':'Final Fantasy XIV karakteri — Lodestone',
     'job.dumpLodestone':'Lodestone sayfa kontrolü (sorun giderme)',
     'job.bookDupes':'Kitaplar — olası kopyaları bul',
-    'job.dump1000kitap':'1000Kitap arama kontrolü (sorun giderme)',
-    'job.askQuery':'Hangi kitap adıyla aransın?',
+    'job.fillBookGenres':'Kitap türleri — Google Books',
+    'job.askOverwrite':'Dolu olan türlerin de üstüne yazılsın mı?\n\nTamam — hepsini yeniden yaz (dil birliği için bunu seç)\nİptal — yalnızca boş olanları doldur',
     'job.fixDateColumns':'Tarih sütunlarını onar — düz metne sabitle',
     'xiv.profile':'Karakter bilgileri','xiv.classes':'Sınıflar','xiv.attributes':'Nitelikler',
     'xiv.race':'Irk','xiv.guardian':'Koruyucu','xiv.town':'Şehir',
@@ -1379,12 +1370,6 @@ const I18N = {
     'xiv.g.mental':'Zihinsel','xiv.g.role':'Rol','xiv.g.other':'Diğer',
     'xiv.source':'Kaynak','xiv.none':'Karakter yok',
     'xiv.empty':'Araçlar’dan “Final Fantasy XIV karakteri”ni çalıştırınca dolar.',
-    'job.syncMalHistory':'MyAnimeList geçmişi — bölüm ve chapter',
-    'job.needMal':'Önce ana sayfadaki Hesaplarım listesine MyAnimeList kullanıcı adını gir.',
-    'job.malUser':'MyAnimeList bu kullanıcı adını tanımıyor — ana sayfadaki Hesaplarım listesini kontrol et.',
-    'job.retry':'bekleyip yeniden deneniyor',
-    'job.jikanDown':'MyAnimeList API’si şu anda yanıt vermiyor. Birkaç dakika sonra tekrar dene ya da mal-history.js betiğini tarayıcı konsolundan çalıştır.',
-    'tools.read':'kayıt okundu',
     'd.details':'Bilgiler','d.progress':'İlerleme','d.myTrack':'Takibim','d.cover':'Kapak görseli adresi',
     'd.season':'Sezon','d.episode':'Bölüm','d.chapter':'Bölüm','d.volume':'Cilt','d.page':'Sayfa',
     'd.notes':'Notlar','d.fav':'Favori','d.status':'Durum','d.edit':'Düzenle','d.saved':'Kaydedildi',
@@ -1393,10 +1378,7 @@ const I18N = {
     'd.completion':'Tamamlanma','d.pickStatus':'Önce bir durum seç',
     'd.progressBlock':'Durum ve ilerleme',
     'lk.title':'Kaynaktan bul','lk.ph':'Adını yaz ve ara',
-    'lk.src.k1link':'1000Kitap linki','lk.src.k1search':'1000Kitap arama',
     'lk.src.openlib':'Open Library','lk.src.google':'Google Books',
-    'lk.ph.k1link':'Kitabın 1000Kitap adresini yapıştır',
-    'lk.ph.k1search':'1000Kitap\'ta adıyla ara',
     'lk.ph.openlib':'Open Library\'de adıyla ara',
     'lk.ph.google':'Google Books\'ta adıyla ara',
     'd.rate':'Puanın','d.rateNone':'Puan yok',
@@ -2850,17 +2832,19 @@ async function deleteDetail(){
 }
 
 /* ---------- 12b. ELLE EKLERKEN KAYNAKTAN DOLDURMA ------------------- */
-/* Kitap arama kaynakları. Sıra kasıtlı: doğru Book Id üreten yollar başta.
-   'k1link' sayfa okunamasa bile adresteki numarayı alır, o yüzden varsayılan. */
+/* Kitap arama kaynakları.
+
+   1000Kitap burada yok: Cloudflare, Apps Script'in çıktığı Google
+   sunucularına HTTP 403 veriyor (v22 tanısı). Sunucudan aşılamıyor,
+   tarayıcıdan da CORS engelliyor. İçe aktarma hâlâ 1000kitap-export.js
+   ile tarayıcıdan yapılıyor, orada bir değişiklik yok. */
 const BOOK_SOURCES = [
-  {id:'k1link',   label:'lk.src.k1link'},
-  {id:'k1search', label:'lk.src.k1search'},
-  {id:'openlib',  label:'lk.src.openlib'},
-  {id:'google',   label:'lk.src.google'}
+  {id:'openlib', label:'lk.src.openlib'},
+  {id:'google',  label:'lk.src.google'}
 ];
 
-let LK = {results:[], src: LS.get('bookSrc','k1link')};
-if(!BOOK_SOURCES.some(k=> k.id===LK.src)) LK.src = 'k1link';
+let LK = {results:[], src: LS.get('bookSrc','openlib')};
+if(!BOOK_SOURCES.some(k=> k.id===LK.src)) LK.src = 'openlib';
 
 function lkPlaceholder(secId){
   if(secId!=='books') return t('lk.ph');
@@ -3023,65 +3007,16 @@ async function uploadCover(file){
    çevirdiği için MAL geçmişi buradan çekilmek zorunda. */
 const uyu = ms => new Promise(r=> setTimeout(r, ms));
 
-/* Jikan zaman zaman 429 (çok istek) ve 504 (MAL yanıt vermedi) dönüyor;
-   ikisi de geçici. Bekleyip yeniden deniyoruz, iki adres biçimini de. */
-async function jikanHistory(user, kind, yaz){
-  const adresler = [
-    `https://api.jikan.moe/v4/users/${encodeURIComponent(user)}/history/${kind}`,
-    `https://api.jikan.moe/v4/users/${encodeURIComponent(user)}/history?type=${kind}`
-  ];
-  const bekle = [4000, 10000, 20000, 30000];
-  let sonKod = 0;
+/* Tarayıcıda çalışması gereken işler. Şu an boş: MyAnimeList geçmişi
+   Araçlar listesinden kaldırıldı. Yapı duruyor, çünkü bazı kaynaklara
+   yalnızca tarayıcıdan ulaşılabiliyor. */
+const CLIENT_JOBS = {};
 
-  for(let deneme=0; deneme<bekle.length; deneme++){
-    for(const url of adresler){
-      let res;
-      try{ res = await fetch(url); }
-      catch(e){ sonKod = 'network'; continue; }
 
-      if(res.ok) return await res.json();
-      sonKod = res.status;
-      if(res.status===404) throw new Error(t('job.malUser'));
-      if(res.status===400) continue;              // bu adres biçimi tutmadı, öbürünü dene
-    }
-    yaz(`   Jikan ${sonKod} — ${bekle[deneme]/1000}s ${t('job.retry')}`);
-    await uyu(bekle[deneme]);
-  }
-  throw new Error(`Jikan ${sonKod} — ${t('job.jikanDown')}`);
-}
-
-const CLIENT_JOBS = {
-  syncMalHistory: async function(yaz){
-    const user = (S.settings['MyAnimeList']||'').trim();
-    if(!user) throw new Error(t('job.needMal'));
-    let eklenen = 0, okunan = 0;
-
-    for(const kind of ['anime','manga']){
-      yaz(`${kind}: ${t('tools.running')}`);
-      const j = await jikanHistory(user, kind, yaz);
-      const rows = (j.data||[]).map(x=>({
-        Section: kind,
-        'MAL ID': x.entry && x.entry.mal_id,
-        Title: (x.entry && (x.entry.name || x.entry.title)) || '',
-        Progress: x.increment,
-        Date: x.date
-      })).filter(r=> r['MAL ID'] && r.Date);
-      okunan += rows.length;
-      yaz(`   ${rows.length} ${t('tools.read')}`);
-      if(rows.length){
-        const out = await API.post('history', {rows});
-        eklenen += out.added || 0;
-      }
-      await uyu(1500);
-    }
-    return {done:eklenen, blank:Math.max(0, okunan-eklenen), skipped:0, ranOut:false};
-  }
-};
-
-const JOBS = ['syncMalHistory','fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
-              'fillBookCovers','fillGameGenres','fillAuthorPhotos','fillPlatformIcons',
+const JOBS = ['fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
+              'fillBookCovers','fillGameGenres','fillBookGenres','fillAuthorPhotos','fillPlatformIcons',
               'fillFfxiv','dumpLodestone','fixDateColumns','rehostCovers','backfillIds',
-              'diagnose','freezeReport','bookDupes','dump1000kitap'];
+              'diagnose','freezeReport','bookDupes'];
 let JOB_BUSY = false;
 
 function openTools(){
@@ -3106,6 +3041,11 @@ async function runJob(job, btn){
   $$('#jobList button[data-job]').forEach(b=> b.disabled = true);
   const eskiEtiket = btn.textContent;
 
+  /* Bir işe soru sorulacaksa döngüden ÖNCE bir kez sorulur; iş süre
+     dolduğu için tekrar çağrıldığında aynı soru yeniden çıkmasın. */
+  const JOB_ARGS = {};
+  if(job==='fillBookGenres') JOB_ARGS.overwrite = confirm(t('job.askOverwrite'));
+
   const yaz = line => { out.textContent += line + '\n'; out.scrollTop = out.scrollHeight; };
   const toplam = {done:0, blank:0, skipped:0};
   const basla = Date.now();
@@ -3120,8 +3060,8 @@ async function runJob(job, btn){
       }else{
         /* Bazı işler sayfadaki ayara ihtiyaç duyuyor; henüz kaydedilmemiş
            olabilir, o yüzden istekle birlikte gönderiyoruz. */
-        const ek = job==='fillFfxiv'    ? {ffxivId: ffxivId()}
-                 : job==='dump1000kitap' ? {q: (prompt(t('job.askQuery'), 'kürk mantolu madonna') || '').trim()}
+        const ek = job==='fillFfxiv'      ? {ffxivId: ffxivId()}
+                 : job==='fillBookGenres' ? {overwrite: JOB_ARGS.overwrite}
                  : {};
         const res = await API.post('task', Object.assign({job}, ek));
         r = res.result || {};
