@@ -531,7 +531,13 @@ tbody tr:last-child td{border-bottom:none}
   content:"";display:block;width:64px;height:3px;border-radius:2px;
   background:var(--brass);margin-bottom:20px;
 }
+/* Bölümler doğrudan .home-side'ın çocuğu gibi davransın: hem masaüstündeki
+   flex boşluğu hem de dar ekrandaki sıralama olduğu gibi çalışsın. */
+#nowWrap{display:contents}
 .playing-row{display:grid;gap:18px;grid-template-columns:repeat(2,1fr)}
+/* İkiden fazla kayıt varsa başlıklar düşüyor ve kapaklar aynı genişliğe
+   sığacak kadar küçülüyor — blok büyümesin diye. */
+.playing-row.compact{gap:10px}
 .playing-card{
   text-align:left;cursor:pointer;transition:transform .18s cubic-bezier(.2,.8,.2,1);
 }
@@ -544,7 +550,7 @@ tbody tr:last-child td{border-bottom:none}
 .playing-card:hover .cover{border-color:var(--brass)}
 .playing-card img{width:100%;height:100%;object-fit:cover;display:block}
 .playing-card .card-title{font-size:14.5px;margin-top:10px}
-@media(max-width:520px){.playing-row{gap:14px}}
+@media(max-width:520px){.playing-row{gap:14px}.playing-row.compact{gap:8px}}
 
 /* ---- kaynaktan doldurma listesi ---- */
 .lk-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-bottom:6px}
@@ -850,11 +856,7 @@ tbody tr:last-child td{border-bottom:none}
       <div class="home-strip" id="homeStrip"></div>
       <div class="home-cols">
         <div class="home-side">
-          <section class="playing hidden" id="playingWrap">
-            <h2 class="playing-h"><span data-i18n="home.playing1">Currently</span>
-              <em data-i18n="home.playing2">playing</em></h2>
-            <div class="playing-row" id="playingRow"></div>
-          </section>
+          <div id="nowWrap"></div>
           <section class="profiles-wrap">
             <div class="sub-h" data-i18n="home.profiles">Profiles</div>
             <div class="profiles" id="profiles"></div>
@@ -986,14 +988,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxlxmXbr71hppg9PRWI2u66vtk8yW7R0Bao0l2awqbwKa3czratQAfxCic2izu2cvIHnA/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxbUgIw6pzFSSlbHTgv1d6QR8eZvSRhrY514kj1i0xTR-b68DxGQHVNvZtkBXu2H5b6zQ/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-22-v23';
+const NEEDS_SERVER = '2026-08-22-v24';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-22-v23';
+const APP_VERSION = '2026-08-22-v24';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1212,6 +1214,9 @@ const I18N = {
     'home.total':'Total records','home.hours':'Hours played','home.eps':'Episodes watched',
     'home.chapters':'Chapters read (Manga)','home.pages':'Pages read (Books)',
     'home.playing1':'Currently','home.playing2':'playing',
+    'home.now.anime1':'Currently','home.now.anime2':'watching',
+    'home.now.manga1':'Reading','home.now.manga2':'manga',
+    'home.now.books1':'Reading','home.now.books2':'books',
     'home.feed':'Activity','home.profiles':'Profiles','home.noFeed':'Nothing here yet.',
     'home.saveProfiles':'Save usernames','home.savedProfiles':'Usernames saved',
     'home.username':'username',
@@ -1318,6 +1323,9 @@ const I18N = {
     'home.total':'Toplam kayıt','home.hours':'Oynanan saat','home.eps':'İzlenen bölüm',
     'home.chapters':'Okunan bölüm (Manga)','home.pages':'Okunan sayfa (Kitap)',
     'home.playing1':'Şu anda','home.playing2':'oynuyorum',
+    'home.now.anime1':'Şu anda','home.now.anime2':'izliyorum',
+    'home.now.manga1':'Manga','home.now.manga2':'okuyorum',
+    'home.now.books1':'Kitap','home.now.books2':'okuyorum',
     'home.feed':'Akış','home.profiles':'Hesaplarım','home.noFeed':'Burada henüz bir şey yok.',
     'home.saveProfiles':'Kullanıcı adlarını kaydet','home.savedProfiles':'Kullanıcı adları kaydedildi',
     'home.username':'kullanıcı adı',
@@ -1944,40 +1952,88 @@ function renderHome(){
   $('#homeStrip').innerHTML = cells.map(([k,v])=>
     `<div class="strip-cell"><div class="strip-k">${esc(k)}</div><div class="strip-v">${esc(v)}</div></div>`).join('');
 
-  renderPlaying();
+  renderNow();
   renderFeed();
   renderProfiles();
   renderFfxivCard();
 }
 
-/* Elindeki oyunlardan Status'u Playing olanlar, ana sayfanın başında. */
-function renderPlaying(){
-  const s = SECTIONS.games;
-  const list = S.data.games
-    .filter(r=> String(r.Status||'').trim().toLowerCase()==='playing')
-    .sort((a,b)=> compareCells(a['Last updated'], b['Last updated'], -1));
+/* ---------- ŞU ANDA DEVAM EDENLER ----------------------------------
+   Dört bölüm de aynı kalıptan çiziliyor. Durum alanı bölümden bölüme
+   değişiyor (oyunda 'Status', kitapta 'Shelf'), o yüzden STATUS_SETS'ten
+   okunuyor — burada ikinci bir liste tutmak ikisinin ayrışmasına yol açardı. */
+const NOW_ROWS = [
+  {sec:'games', deger:'playing',  tarih:'Last updated', h1:'home.playing1',   h2:'home.playing2'},
+  {sec:'anime', deger:'watching', tarih:'Start Date',   h1:'home.now.anime1', h2:'home.now.anime2'},
+  {sec:'manga', deger:'reading',  tarih:'Start Date',   h1:'home.now.manga1', h2:'home.now.manga2'},
+  {sec:'books', deger:'reading',  tarih:'Date Read',    h1:'home.now.books1', h2:'home.now.books2'}
+];
 
-  $('#playingWrap').classList.toggle('hidden', !list.length);
-  if(!list.length){ $('#playingRow').innerHTML=''; return; }
+/* İki kayda kadar başlık ve alt bilgi var. Daha fazlasında yalnızca kapak
+   kalıyor ve sütun sayısı arttığı için kapaklar kendiliğinden küçülüyor;
+   böylece blok iki kayıtlıkken kapladığı alanı aşmıyor. Altı sütundan
+   sonrası okunmaz hale geldiği için satır kırılıyor. */
+const NOW_MAX_COLS = 6;
 
-  $('#playingRow').innerHTML = list.map(r=>{
-    const title = r[s.title]||'—';
-    const img = nz(r.Cover)
-      ? `<img src="${esc(r.Cover)}" alt="" loading="lazy">`
-      : `<div class="cover-fallback">${esc(initials(title))}</div>`;
-    const alt = [cardSub('games', r), nz(r.Completion)&&r.Completion!=='No Status'?r.Completion:'',
-                 numOf(r.Playtime)>0?fmtHours(r.Playtime):''].filter(Boolean).join(' · ');
-    return `<button class="playing-card" data-sec="games" data-id="${esc(r._id)}">
-      <div class="cover" style="background:${tintFor(title)}">${img}</div>
-      <div class="card-title">${esc(title)}</div>
-      <div class="card-sub">${esc(alt)}</div>
-    </button>`;
+function renderNow(){
+  const kutu = $('#nowWrap');
+  if(!kutu) return;
+
+  kutu.innerHTML = NOW_ROWS.map(cfg=>{
+    const alan = (STATUS_SETS[cfg.sec]||{}).field;
+    const liste = (S.data[cfg.sec]||[])
+      .filter(r=> String(r[alan]||'').trim().toLowerCase() === cfg.deger)
+      .sort((a,b)=> compareCells(a[cfg.tarih], b[cfg.tarih], -1));
+    if(!liste.length) return '';
+
+    const sik = liste.length > 2;
+    const sutun = Math.min(liste.length, sik ? NOW_MAX_COLS : 2);
+    return `<section class="playing">
+      <h2 class="playing-h"><span>${esc(t(cfg.h1))}</span> <em>${esc(t(cfg.h2))}</em></h2>
+      <div class="playing-row${sik?' compact':''}" style="grid-template-columns:repeat(${sutun},1fr)">
+        ${liste.map(r=> nowCard(cfg.sec, r, sik)).join('')}
+      </div>
+    </section>`;
   }).join('');
 
-  $$('#playingRow .playing-card').forEach(b=> b.onclick = ()=>{
-    const rec = S.data.games.find(x=>x._id===b.dataset.id);
-    if(rec) openDetail('games', rec);
+  $$('#nowWrap .playing-card').forEach(b=> b.onclick = ()=>{
+    const rec = (S.data[b.dataset.sec]||[]).find(x=> x._id===b.dataset.id);
+    if(rec) openDetail(b.dataset.sec, rec);
   });
+}
+
+function nowCard(secId, r, sik){
+  const s = SECTIONS[secId];
+  const title = r[s.title] || '—';
+  const img = nz(r.Cover)
+    ? `<img src="${esc(r.Cover)}" alt="" loading="lazy">`
+    : `<div class="cover-fallback">${esc(initials(title))}</div>`;
+  /* Başlık gizliyken de ne olduğu anlaşılsın diye title özniteliği duruyor. */
+  return `<button class="playing-card" data-sec="${secId}" data-id="${esc(r._id)}" title="${esc(title)}">
+    <div class="cover" style="background:${tintFor(title)}">${img}</div>
+    ${sik ? '' : `<div class="card-title">${esc(title)}</div>
+                  <div class="card-sub">${esc(nowSub(secId, r))}</div>`}
+  </button>`;
+}
+
+function nowSub(secId, r){
+  const s = SECTIONS[secId];
+  if(secId==='games'){
+    return [cardSub('games', r),
+            nz(r.Completion) && r.Completion!=='No Status' ? r.Completion : '',
+            numOf(r.Playtime)>0 ? fmtHours(r.Playtime) : ''].filter(Boolean).join(' · ');
+  }
+  if(s.progress){
+    const cur = numOf(r[s.progress.cur])||0, tot = numOf(r[s.progress.total])||0;
+    if(tot>0) return `${cur} / ${tot}`;
+    return cur>0 ? String(cur) : '';
+  }
+  if(secId==='books'){
+    /* Sayfa takibi çoğu kayıtta boş; boşsa yalnızca yazar yazsın. */
+    const cur = numOf(r.Page)||0, tot = numOf(r.Pages)||0;
+    return [r.Author||'', (cur>0 && tot>0) ? `${cur} / ${tot}` : ''].filter(Boolean).join(' · ');
+  }
+  return cardSub(secId, r);
 }
 
 /* ---------- 8b. ACTIVITY FEED ---------------------------------------- */
