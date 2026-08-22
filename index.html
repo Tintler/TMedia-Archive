@@ -966,14 +966,14 @@ tbody tr:last-child td{border-bottom:none}
    on this browser's storage alone, which is handy for trying things out.
    BURAYA Apps Script web uygulamanızın /exec adresini yapıştırın.       */
 
-const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwrheauQrHqIvuti44gBcFmdJeWiBRybrTW7TsUbTXx2fpxVJcs6lYW21wGm25VdHdfSw/exec';
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwFDbpzY1QA5FvORhscT7i2gII5KcZx0T4dBE981tXJXw4q1XUjEm5DJi55ycfKTj7Nug/exec';
 
 /* Code.gs içindeki CODE_VERSION ile aynı olmalı. Tutmuyorsa site eski bir
    dağıtımla konuşuyordur ve içe aktarma kuralları uygulanmaz. */
-const NEEDS_SERVER = '2026-08-21-v20';
+const NEEDS_SERVER = '2026-08-22-v21';
 /* Bu dosyanın sürümü. Sayfanın sağ altında yazar; tarayıcı eski bir kopyayı
    gösteriyorsa oradan anlarsın. Her değişiklikte artır. */
-const APP_VERSION = '2026-08-21-v20';
+const APP_VERSION = '2026-08-22-v21';
 
 /* =====================================================================
    THE BACKLOG — single-file front end
@@ -1230,6 +1230,9 @@ const I18N = {
     'job.fillPlatformIcons':'Platform icons — store them in the Sheet',
     'job.fillFfxiv':'Final Fantasy XIV character — Lodestone',
     'job.dumpLodestone':'Lodestone page check (for troubleshooting)',
+    'job.bookDupes':'Books — find likely duplicates',
+    'job.dump1000kitap':'1000Kitap search check (for troubleshooting)',
+    'job.askQuery':'Which title should it search for?',
     'job.fixDateColumns':'Fix date columns — keep them as plain text',
     'xiv.profile':'Character profile','xiv.classes':'Classes','xiv.attributes':'Attributes',
     'xiv.race':'Race','xiv.guardian':'Guardian','xiv.town':'City-state',
@@ -1255,6 +1258,8 @@ const I18N = {
     'd.completion':'Completion','d.pickStatus':'Choose a status first',
     'd.progressBlock':'Status & progress',
     'lk.title':'Look it up','lk.ph':'Type a title and search',
+    'lk.ph.books':'Title, or paste a 1000Kitap link',
+    'lk.hint.books':'Searches 1000Kitap first, so the book keeps its Book Id and a later import updates this row instead of adding a second one. Pasting the 1000Kitap address is the surest way. Google Books and Open Library are fallbacks — those ids will not match an import.',
     'lk.go':'Search','lk.none':'Nothing found','lk.searching':'Searching…',
     'lk.hint':'Optional. Fill the fields from the source, then edit anything you like — or skip this and type everything by hand.',
     'lk.filled':'Fields filled from the source',
@@ -1336,6 +1341,9 @@ const I18N = {
     'job.fillPlatformIcons':'Platform simgeleri — tabloya indir',
     'job.fillFfxiv':'Final Fantasy XIV karakteri — Lodestone',
     'job.dumpLodestone':'Lodestone sayfa kontrolü (sorun giderme)',
+    'job.bookDupes':'Kitaplar — olası kopyaları bul',
+    'job.dump1000kitap':'1000Kitap arama kontrolü (sorun giderme)',
+    'job.askQuery':'Hangi kitap adıyla aransın?',
     'job.fixDateColumns':'Tarih sütunlarını onar — düz metne sabitle',
     'xiv.profile':'Karakter bilgileri','xiv.classes':'Sınıflar','xiv.attributes':'Nitelikler',
     'xiv.race':'Irk','xiv.guardian':'Koruyucu','xiv.town':'Şehir',
@@ -1361,6 +1369,8 @@ const I18N = {
     'd.completion':'Tamamlanma','d.pickStatus':'Önce bir durum seç',
     'd.progressBlock':'Durum ve ilerleme',
     'lk.title':'Kaynaktan bul','lk.ph':'Adını yaz ve ara',
+    'lk.ph.books':'Kitap adı ya da 1000Kitap adresi',
+    'lk.hint.books':'Önce 1000Kitap\'a bakar; böylece kitabın Book Id\'si doğru olur ve sonraki içe aktarma bu satırı günceller, ikinci satır açmaz. En garantisi kitabın 1000Kitap adresini yapıştırmak. Google Books ve Open Library yedektir — onların numarası içe aktarmayla eşleşmez.',
     'lk.go':'Ara','lk.none':'Sonuç yok','lk.searching':'Aranıyor…',
     'lk.hint':'İsteğe bağlı. Alanları kaynaktan doldurur, sonra dilediğini değiştirirsin — ya da hiç kullanmadan elle yazarsın.',
     'lk.filled':'Alanlar kaynaktan dolduruldu',
@@ -2632,11 +2642,12 @@ function openDetail(secId, rec, isNew){
 
   /* Elle kayıt eklerken kaynaktan doldurma paneli. IGDB ya da OMDb
      kapanırsa panel çalışmaz ama form elle doldurulmaya devam eder. */
-  const lookupBlock = (isNew && S.auth && API.connected && (secId==='games' || secId==='screen'))
+  const lookupBlock = (isNew && S.auth && API.connected &&
+                       (secId==='games' || secId==='screen' || secId==='books'))
     ? `<div class="sub-h">${esc(t('lk.title'))}</div>
-       <p class="section-hint">${esc(t('lk.hint'))}</p>
+       <p class="section-hint">${esc(t(secId==='books' ? 'lk.hint.books' : 'lk.hint'))}</p>
        <div style="display:flex;gap:8px;margin-bottom:12px">
-         <input type="text" id="lkQ" placeholder="${esc(t('lk.ph'))}" style="flex:1">
+         <input type="text" id="lkQ" placeholder="${esc(t(secId==='books' ? 'lk.ph.books' : 'lk.ph'))}" style="flex:1">
          <button class="btn" id="lkGo">${esc(t('lk.go'))}</button>
        </div>
        <div id="lkResults"></div>`
@@ -2786,7 +2797,11 @@ async function runLookup(secId, q){
       box.innerHTML = `<div class="lk-list">` + LK.results.map((x,i)=>{
         const alt = secId==='games'
           ? [x.year, (x.platforms||[]).slice(0,3).join(', ')].filter(Boolean).join(' · ')
-          : [x.year, x.kind].filter(Boolean).join(' · ');
+          : secId==='books'
+            /* Kaynağı da yazıyoruz: 1000Kitap dışından gelen bir kayıt
+               ileride içe aktarmayla eşleşmez, bunu seçmeden görmek gerek. */
+            ? [x.author, x.year, x.publisher, x.source].filter(Boolean).join(' · ')
+            : [x.year, x.kind].filter(Boolean).join(' · ');
         const th = x.cover
           ? `<img src="${esc(x.cover)}" alt="" loading="lazy">`
           : `<div class="lk-thumb-blank">${esc(initials(x.title))}</div>`;
@@ -2820,7 +2835,8 @@ async function pickLookup(secId, item){
       const d = res.record;
       if(!d) throw new Error(t('lk.none'));
       kapak = d.__cover || kapak;
-      Object.keys(d).forEach(k=>{ if(k!=='__cover') rec[k] = d[k]; });
+      /* __cover, __source gibi yardımcı alanlar forma sızmasın. */
+      Object.keys(d).forEach(k=>{ if(k.slice(0,2)!=='__') rec[k] = d[k]; });
     }
 
     if(kapak){
@@ -2980,7 +2996,7 @@ const CLIENT_JOBS = {
 const JOBS = ['syncMalHistory','fillGameCovers','fillScreenCovers','fillAnimeCovers','fillMangaCovers',
               'fillBookCovers','fillGameGenres','fillAuthorPhotos','fillPlatformIcons',
               'fillFfxiv','dumpLodestone','fixDateColumns','rehostCovers','backfillIds',
-              'diagnose','freezeReport'];
+              'diagnose','freezeReport','bookDupes','dump1000kitap'];
 let JOB_BUSY = false;
 
 function openTools(){
@@ -3019,7 +3035,9 @@ async function runJob(job, btn){
       }else{
         /* Bazı işler sayfadaki ayara ihtiyaç duyuyor; henüz kaydedilmemiş
            olabilir, o yüzden istekle birlikte gönderiyoruz. */
-        const ek = (job==='fillFfxiv') ? {ffxivId: ffxivId()} : {};
+        const ek = job==='fillFfxiv'    ? {ffxivId: ffxivId()}
+                 : job==='dump1000kitap' ? {q: (prompt(t('job.askQuery'), 'kürk mantolu madonna') || '').trim()}
+                 : {};
         const res = await API.post('task', Object.assign({job}, ek));
         r = res.result || {};
       }
